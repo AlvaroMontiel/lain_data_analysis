@@ -4,7 +4,11 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="b4bf12d5-991b-441a-948a-2523865620ea" name="Changes" comment="fist commit" />
+    <list default="true" id="b4bf12d5-991b-441a-948a-2523865620ea" name="Changes" comment="fist commit">
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/data_cleaner.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/data_cleaner.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/data_loader.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/data_loader.py" afterDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -64,7 +68,7 @@
       <option name="number" value="Default" />
       <option name="presentableId" value="Default" />
       <updated>1739376178240</updated>
-      <workItem from="1739376179342" duration="1485000" />
+      <workItem from="1739376179342" duration="11839000" />
     </task>
     <task id="LOCAL-00001" summary="fist commit">
       <option name="closed" value="true" />
