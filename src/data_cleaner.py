@@ -29,16 +29,16 @@ class DataCleaner:
             "Origen Caso",
             "Nr Folio",
             "Tipo de Caso",
-            "Fecha Atención Urgencia",
-            "Semana Epidemiológica",
+            "Fecha Atencion Urgencia",
+            "Semana Epidemiologica",
             "Estado",
-            "Clasificación",
-            "Subclasificación",
-            "Región",
+            "Clasificacion",
+            "Subclasificacion",
+            "Region",
             "Comuna",
             "Establecimiento Salud",
             "Dependencia",
-            "Identificación Paciente",
+            "Identificacion Paciente",
             "ID/RUT Paciente",
             "Nombre Paciente",
             "Apellido Paterno Paciente",
@@ -46,44 +46,46 @@ class DataCleaner:
             "Sexo Paciente",
             "Fecha Nacimiento Paciente",
             "Edad Paciente",
-            "Región Paciente",
+            "Region Paciente",
             "Comuna Paciente",
-            "Dirección Paciente",
+            "Direccion Paciente",
             "Se considera pueblo originario",
             "Pueblo originario",
             "Se considera afrodescendiente",
-            "Identidad de Género",
-            "Orientación Sexual",
+            "Identidad de Genero",
+            "Orientacion Sexual",
             "Nacionalidad Paciente",
             "Persona Bajo Cuidado",
-            "Lesión fue Autoinfligida",
-            "Lesión fue Intencional",
-            "Tuvo intención de Morir",
-            "Tiene Antecedentes Salud Mental",
-            "Antecedentes Salud Mental",
-            "Tiene Tratamiento Salud Mental",
-            "Lugar Tratamiento Salud Mental",
-            "Paciente Estudia Actualmente",
-            "Región de Estudios",
-            "Comuna de Estudios",
-            "Nombre Establecimiento Estudio",
-            "Paciente Trabaja Actualmente",
-            "Región de Trabajo",
-            "Comuna de Trabajo",
-            "Nombre Lugar de Trabajo",
-            "Fecha del Evento",
+            "Lesion fue Autoinfligida",
+            "Lesion fue Intencional",
+            "Tuvo intencion de Morir",
+            "Tiene Antecedentes salud mental",    # <-- Corregido
+            "Antecedentes salud mental",         # <-- Corregido
+            "Tiene tratamiento salud mental",    # <-- Corregido
+            "Lugar tratamiento salud mental",    # <-- Corregido
+            "Paciente estudia actualmente",      # <-- Corregido
+            "Region de estudios",                # <-- Corregido
+            "Comuna de estudios",                # <-- Corregido
+            "Nombre establecimiento estudio",    # <-- Corregido
+            "Paciente trabaja actualmente",      # <-- Corregido
+            "Region de trabajo",                 # <-- Corregido
+            "Comuna de trabajo",                 # <-- Corregido
+            "Nombre lugar de trabajo",           # <-- Corregido
+            "Fecha del evento",                  # <-- Corregido
             "Tipo de Evento",
-            "Método de Lesión",
-            "Detalle Método de Lesión",
-            "Lugar del Evento",
-            "Detalle del Lugar Evento",
+            "Metodo de Lesion",
+            "Detalle metodo de Lesion",          # <-- Corregido
+            "Lugar del evento",                  # <-- Corregido
+            "Detalle del lugar evento",          # <-- Corregido
             "Factor Precipitante",
-            "Derivación",
-            "Derivación Región",
-            "Derivación Comuna",
-            "Derivación Establecimiento",
-            "Derivación Detalle"
+            "Derivacion",
+            "Derivacion Region",
+            "Derivacion Comuna",
+            "Derivacion Establecimiento",
+            "Derivacion detalle"                 # <-- Corregido
         ]
+
+
 
 
     def select_variables(self, selected_variables: List[str]) -> None:
@@ -109,7 +111,7 @@ class DataCleaner:
             & (self.df['Lesion fue Autoinfligida'] == 'Si')
             & (self.df['Lesion fue Intencional'] == 'Si')
             & (self.df['Tuvo intencion de Morir'] == 'Si')
-            & (self.df['Región'] == 'REGION DE ANTOFAGASTA')
+            & (self.df['Region'] == 'REGION DE ANTOFAGASTA')
         ]
 
     def drop_missing(self, how: str = "any", subset: Optional[List[str]] = None) -> None:
