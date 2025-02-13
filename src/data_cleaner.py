@@ -85,9 +85,6 @@ class DataCleaner:
             "Derivacion detalle"                 # <-- Corregido
         ]
 
-
-
-
     def select_variables(self, selected_variables: List[str]) -> None:
         """
         Selecciona las variables ya predefinidas que se requieren en el analisis.
@@ -107,11 +104,12 @@ class DataCleaner:
         self.df = self.df[
             (self.df['Tipo de Caso'] == 'Cerrado')
             & (self.df['Estado'] == 'Finalizado')
-            & (self.df['Subclasificacion'].isin(['Con intencion suicida', 'Sin intencion suicida']))
+            & (self.df['Subclasificacion'].isin(['Con intención suicida', 'Sin intención suicida']))
             & (self.df['Lesion fue Autoinfligida'] == 'Si')
             & (self.df['Lesion fue Intencional'] == 'Si')
-            & (self.df['Tuvo intencion de Morir'] == 'Si')
+            & (self.df['Tuvo intencion de Morir'].isin(['Si', 'No']))
             & (self.df['Region'] == 'REGION DE ANTOFAGASTA')
+            & (self.df['Edad Paciente'] > 0)
         ]
 
     def drop_missing(self, how: str = "any", subset: Optional[List[str]] = None) -> None:
