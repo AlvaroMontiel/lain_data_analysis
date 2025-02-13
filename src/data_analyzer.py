@@ -95,7 +95,7 @@ class DataAnalyzer:
         grouped = self.df.groupby(group_col)[agg_col].agg(funcs)
         return grouped.reset_index()
 
-    def histogram(self, column: str, nbins: int = 20) -> go.Figure:
+    def histogram(self, column: str, nbins: int = 5) -> go.Figure:
         """
         Genera un histograma (usando plotly) de la columna especificada.
 
