@@ -7,6 +7,8 @@ import os
 import pandas as pd
 from typing import Optional
 
+import streamlit as st
+
 
 class DataLoader:
     """
@@ -28,6 +30,7 @@ class DataLoader:
         self.file_path = file_path
         self.sheet_name = sheet_name
 
+    @st.cache_data
     def load_data(self) -> pd.DataFrame:
         """
         Carga los datos en función de la extensión del archivo.
@@ -62,6 +65,7 @@ class DataLoader:
             # Podrías capturar errores más específicos o realizar logs
             raise Exception(f"Error al leer el archivo {self.file_path}: {e}")
 
+    @st.cache_data
     def _load_excel(self) -> pd.DataFrame:
         """
         Carga datos desde Excel.
@@ -70,6 +74,7 @@ class DataLoader:
         df = pd.read_excel(self.file_path, sheet_name=self.sheet_name)
         return df
 
+    @st.cache_data
     def _load_csv(self) -> pd.DataFrame:
         """
         Carga datos desde CSV.
