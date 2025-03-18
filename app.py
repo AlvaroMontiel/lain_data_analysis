@@ -1,69 +1,72 @@
 import streamlit as st
+from src.ui import UI
 from src.data_loader import DataLoader
 from src.data_cleaner import DataCleaner
 from src.data_analyzer import DataAnalyzer
+from src.visualization import Visualization
+# from src.auth import check_access
+
 
 def main():
-    """
-    Función principal que orquesta la carga, limpieza y análisis de datos.
-    """
-    st.title("Vigilancia Epidemiológica de Lesiones Autoinfligidas")
+    st.set_page_config(page_title="Vigilancia Epidemiológica", layout="wide")
+    st.title("🔍 Vigilancia Epidemiológica de Lesiones Autoinfligidas y Muertes por Suicidio")
 
-    # 1. Cargar datos con DataLoader
-    # ------------------------------------------------
+    # Menú
+    selected_option = UI.sidebar()
+    # selected_option = UI.user_tabs()
+
+    # ✅ ACTUALIZACIÓN DEL NOMBRE DEL ARCHIVO
     ruta_excel = "data/reporte_formularios_250212_1610.xlsx"
     hoja_excel = "reporte_formularios_250212_1610"
+
     loader = DataLoader(file_path=ruta_excel, sheet_name=hoja_excel)
     df_raw = loader.load_data()
 
-    st.subheader("Datos crudos cargados")
-    st.write(df_raw.head())
-    st.write(f"Filas x Columnas: {df_raw.shape}")
-
-    # 2. Limpiar datos con DataCleaner
-    # ------------------------------------------------
+    # Limpieza de datos
     cleaner = DataCleaner(df_raw)
-
-    # Seleccionar las variables que se ocuparan en el analisis
-    cleaner.select_variables(cleaner.selected_variables)
-
-    # Aplicar el filtro primario
     cleaner.primary_filter()
-
-    # Obtener el DataFrame limpio
     df_clean = cleaner.get_clean_data()
 
-    st.subheader("Datos tras limpieza")
-    st.write(df_clean.head())
-    st.write(f"Filas x Columnas: {df_clean.shape}")
+    # Módulo de KPIs
+    kpis = {
+        "total_casos": df_clean.shape[0],
+       # "intentos": df_clean["Tipo Evento"].value_counts().get("Intento de Suicidio", 0),
+        "tendencia": round((df_clean.shape[0] - 500) / 500 * 100, 2)  # Ejemplo de cálculo
+    }
 
-    # 3. Analizar datos con DataAnalyzer
-    # ------------------------------------------------
-    analyzer = DataAnalyzer(df_clean)
+    if selected_option == "Inicio":
+        UI.show_kpis(kpis)
+        st.subheader("📊 Análisis General")
+        fig_hist = Visualization.histogram(df_clean, "Edad Paciente")
+        st.plotly_chart(fig_hist, use_container_width=True)
 
-    st.subheader("Estadísticas descriptivas de 'Edad Paciente'")
-    stats_edad = analyzer.basic_stats(columns=["Edad Paciente"])
-    st.dataframe(stats_edad)
+    elif selected_option == "Muertes por Suicidio":
+        st.subheader("📌 Análisis de Muertes por Suicidio")
+        st.dataframe(DataAnalyzer(df_clean).basic_stats(["Edad Paciente"]))
 
-    st.subheader("Frecuencia de 'Sexo Paciente'")
-    freq_sexo = analyzer.frequency_table("Sexo Paciente", normalize=True)
-    st.dataframe(freq_sexo)
+    elif selected_option == "Intentos de Suicidio":
+        st.subheader("📌 Análisis de Intentos de Suicidio")
+        st.dataframe(DataAnalyzer(df_clean).frequency_table("Sexo Paciente"))
 
-    st.subheader("Frecuencia de 'Orientación Sexual'")
-    freq_orientacion_sexual = analyzer.frequency_table("Orientacion Sexual", normalize=True)
-    st.dataframe(freq_orientacion_sexual)
+    # Sin autenticacion por el momento
+    # elif selected_option == "Carga de Datos":
+    #     st.subheader("🔄 Cargar nuevos datos")
+    #
+    #     # Requiere autenticación solo en esta sección
+    #     user_email = st.text_input("Ingrese su correo")
+    #     if st.button("Iniciar sesión"):
+    #         if check_access(user_email):
+    #             st.success("Acceso concedido")
+    #
+    #             # Módulo de carga de archivos
+    #             uploaded_file = st.file_uploader("Suba un archivo Excel o CSV", type=["csv", "xlsx"])
+    #             if uploaded_file:
+    #                 st.success("Archivo cargado correctamente")
+    #         else:
+    #             st.error("Acceso denegado. No tiene permisos para cargar datos.")
 
-    st.subheader("Frecuencia de 'Nacionalidad Paciente'")
-    freq_nacionalidad = analyzer.frequency_table("Nacionalidad Paciente", normalize=True)
-    st.dataframe(freq_nacionalidad)
-
-    st.subheader("Histograma de 'Edad Paciente'")
-    fig_hist = analyzer.histogram(column="Edad Paciente", nbins=15)
-    st.plotly_chart(fig_hist, use_container_width=True)
-
-    st.subheader("Boxplot de 'Edad Paciente' según 'Sexo Paciente'")
-    fig_box = analyzer.boxplot(x_col="Sexo Paciente", y_col="Edad Paciente", color_col="Sexo Paciente")
-    st.plotly_chart(fig_box, use_container_width=True)
+    # Footer
+    UI.show_footer()
 
 if __name__ == "__main__":
     main()
