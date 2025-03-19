@@ -429,5 +429,3 @@ class IntegerCleaner:
 
     def semana_epidemiologica(self):
         pass
-
-
