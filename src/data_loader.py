@@ -9,6 +9,9 @@ from typing import Optional
 
 import streamlit as st
 
+# TODO: Soporte para otros delimitadores en CSV, Validacion de las hojas de calculo, Logs y manejo de errores
+# TODO: Uso de cache en STREAMLIT, control de tamano y manejo de datos grandes
+# TODO: Lectura de archivos subidos por el usuario, Documentacion y tipado
 
 class DataLoader:
     """
