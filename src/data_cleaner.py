@@ -94,6 +94,18 @@ class DataCleaner:
         """
         self.df = self.df.loc[:, selected_variables]
 
+    def date_adjust(self) -> None:
+        self.df['Fecha Atencion Urgencia'] = pd.to_datetime(self.df['Fecha Atencion Urgencia'],
+                                                            format='%d/%m/%Y',
+                                                            errors='coerce')
+        self.df['Fecha del evento'] = pd.to_datetime(self.df['Fecha del evento'],
+                                                     format='%d/%m/%Y',
+                                                     errors='coerce')
+        self.df['Fecha Nacimiento Paciente'] = pd.to_datetime(self.df['Fecha Nacimiento Paciente'],
+                                                              format='%d/%m/%Y',
+                                                              errors='coerce')
+
+
     def primary_filter(self) -> None:
         """
         Seleccion de casos que van a entrar en el analisis estadistico
@@ -103,15 +115,13 @@ class DataCleaner:
         """
         self.df = self.df[
             (self.df['Origen Caso'].isin(['Notificación LAIN', 'Notificación física']))
-            & (self.df['Tipo de Caso'] == 'Cerrado') # TODO: Excluir explicitamente NaN
+            & (self.df['Tipo de Caso'] == 'Cerrado')
             & (self.df['Estado'] == 'Finalizado')
             & (self.df['Clasificación'] == 'Confirmado LAIN')
-            & (self.df['Subclasificacion'].isin(['Con intención suicida', 'Sin intención suicida'])) # TODO: Excluir explicitamente NaN
+            & (self.df['Subclasificacion'].isin(['Con intención suicida', 'Sin intención suicida']))
             & (self.df['Lesion fue Autoinfligida'] == 'Si')
             & (self.df['Lesion fue Intencional'] == 'Si')
             & (self.df['Tuvo intencion de Morir'].isin(['Si', 'No']))
-            & (self.df['Region'] == 'REGION DE ANTOFAGASTA') # TODO: Extender el analisis a otras regiones para comparacion
-            & (self.df['Edad Paciente'] > 0)
         ]
 
     def drop_missing(self, how: str = "any", subset: Optional[List[str]] = None) -> None:
