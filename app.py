@@ -11,13 +11,12 @@ def main():
     st.set_page_config(page_title="Vigilancia Epidemiológica", layout="wide")
     st.title("🔍 Vigilancia Epidemiológica de Lesiones Autoinfligidas y Muertes por Suicidio")
 
-    # Menú
+    # Menú, usa radio
     selected_option = UI.sidebar()
-    # selected_option = UI.user_tabs()
 
-    # ✅ ACTUALIZACIÓN DEL NOMBRE DEL ARCHIVO
-    ruta_excel = "data/reporte_formularios_250212_1610.xlsx"
-    hoja_excel = "reporte_formularios_250212_1610"
+    # ✅ NOMBRE DEL ARCHIVO
+    ruta_excel = "data/reporte_formularios_250106_1122.xlsx"
+    hoja_excel = "reporte_formularios_250106_1122"
 
     loader = DataLoader(file_path=ruta_excel, sheet_name=hoja_excel)
     df_raw = loader.load_data()
@@ -34,36 +33,49 @@ def main():
         "tendencia": round((df_clean.shape[0] - 500) / 500 * 100, 2)  # Ejemplo de cálculo
     }
 
+    # Navegación según la opción elegida en el sidebar
     if selected_option == "Inicio":
+        st.subheader("📊 Análisis General (Placeholder)")
+        st.info("Aquí irá un resumen general de los datos. Gráficos, tablas, etc.")
         UI.show_kpis(kpis)
-        st.subheader("📊 Análisis General")
         fig_hist = Visualization.histogram(df_clean, "Edad Paciente")
         st.plotly_chart(fig_hist, use_container_width=True)
 
-    elif selected_option == "Muertes por Suicidio":
-        st.subheader("📌 Análisis de Muertes por Suicidio")
-        st.dataframe(DataAnalyzer(df_clean).basic_stats(["Edad Paciente"]))
+    elif selected_option == "Muertes por suicidio":
+        st.subheader("📌 Análisis de muertes por suicidio")
+        st.info("Placeholder donde se mostrarán estadísticas específicas de muertes por suicidio.")
+        # st.dataframe(DataAnalyzer(df_clean).basic_stats(["Edad Paciente"]))
+        st.write("Placeholder: Analisis de las muertes por suicidio")
 
-    elif selected_option == "Intentos de Suicidio":
-        st.subheader("📌 Análisis de Intentos de Suicidio")
-        st.dataframe(DataAnalyzer(df_clean).frequency_table("Sexo Paciente"))
+    elif selected_option == "Lesiones autoinfligidas":
+        st.subheader("📌 Análisis de lesiones autoinfligidas")
+        st.info("Placeholder para mostrar frecuencias, perfiles y correlaciones de intentos de suicidio.")
+        st.write("Placeholder: Analisis de las lesiones autoinfligidas")
+        # st.dataframe(DataAnalyzer(df_clean).frequency_table("Sexo Paciente"))
 
-    # Sin autenticacion por el momento
-    # elif selected_option == "Carga de Datos":
-    #     st.subheader("🔄 Cargar nuevos datos")
-    #
-    #     # Requiere autenticación solo en esta sección
-    #     user_email = st.text_input("Ingrese su correo")
-    #     if st.button("Iniciar sesión"):
-    #         if check_access(user_email):
-    #             st.success("Acceso concedido")
-    #
-    #             # Módulo de carga de archivos
-    #             uploaded_file = st.file_uploader("Suba un archivo Excel o CSV", type=["csv", "xlsx"])
-    #             if uploaded_file:
-    #                 st.success("Archivo cargado correctamente")
-    #         else:
-    #             st.error("Acceso denegado. No tiene permisos para cargar datos.")
+    elif selected_option == "Análisis demográfico":
+        st.subheader("📌 Análisis demográfico")
+        st.info("Aquí irá el análisis demográfico. Estadísticas por sexo, edad, etc.")
+        # Placeholder simple
+        st.write("Placeholder: Gráficos de pirámides poblacionales, distribuciones, etc.")
+
+    elif selected_option == "Regristros estadísticos mensuales":
+        st.subheader("📌 Regristros estadísticos mensuales")
+        st.info("Placeholder para análisis de los REM.")
+        # Placeholder
+        st.write("Placeholder: Gráficos sobre REMs.")
+
+    elif selected_option == "Análisis temporal":
+        st.subheader("📌 Análisis temporal")
+        st.info("Placeholder para tendencias y evoluciones de eventos a lo largo del tiempo.")
+        # Placeholder
+        st.write("Placeholder: Series de tiempo, tendencias mensuales/anuales...")
+
+    elif selected_option == "Análisis geográfico":
+        st.subheader("📌 Análisis geográfico")
+        st.info("Placeholder para mapas y análisis geoespacial.")
+        # Placeholder
+        st.write("Placeholder: Mapas de calor, coropletas, etc.")
 
     # Footer
     UI.show_footer()
