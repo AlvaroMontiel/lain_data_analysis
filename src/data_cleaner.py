@@ -59,30 +59,30 @@ class DataCleaner:
             "Lesion fue Autoinfligida",
             "Lesion fue Intencional",
             "Tuvo intencion de Morir",
-            "Tiene Antecedentes salud mental",    # <-- Corregido
-            "Antecedentes salud mental",         # <-- Corregido
-            "Tiene tratamiento salud mental",    # <-- Corregido
-            "Lugar tratamiento salud mental",    # <-- Corregido
-            "Paciente estudia actualmente",      # <-- Corregido
-            "Region de estudios",                # <-- Corregido
-            "Comuna de estudios",                # <-- Corregido
-            "Nombre establecimiento estudio",    # <-- Corregido
-            "Paciente trabaja actualmente",      # <-- Corregido
-            "Region de trabajo",                 # <-- Corregido
-            "Comuna de trabajo",                 # <-- Corregido
-            "Nombre lugar de trabajo",           # <-- Corregido
-            "Fecha del evento",                  # <-- Corregido
+            "Tiene Antecedentes salud mental",
+            "Antecedentes salud mental",
+            "Tiene tratamiento salud mental",
+            "Lugar tratamiento salud mental",
+            "Paciente estudia actualmente",
+            "Region de estudios",
+            "Comuna de estudios",
+            "Nombre establecimiento estudio",
+            "Paciente trabaja actualmente",
+            "Region de trabajo",
+            "Comuna de trabajo",
+            "Nombre lugar de trabajo",
+            "Fecha del evento",
             "Tipo de Evento",
             "Metodo de Lesion",
-            "Detalle metodo de Lesion",          # <-- Corregido
-            "Lugar del evento",                  # <-- Corregido
-            "Detalle del lugar evento",          # <-- Corregido
+            "Detalle metodo de Lesion",
+            "Lugar del evento",
+            "Detalle del lugar evento",
             "Factor Precipitante",
             "Derivacion",
             "Derivacion Region",
             "Derivacion Comuna",
             "Derivacion Establecimiento",
-            "Derivacion detalle"                 # <-- Corregido
+            "Derivacion detalle"
         ]
 
     def select_variables(self, selected_variables: List[str]) -> None:
@@ -102,13 +102,15 @@ class DataCleaner:
             No recibe argumentos
         """
         self.df = self.df[
-            (self.df['Tipo de Caso'] == 'Cerrado')
+            (self.df['Origen Caso'].isin(['Notificación LAIN', 'Notificación física']))
+            & (self.df['Tipo de Caso'] == 'Cerrado') # TODO: Excluir explicitamente NaN
             & (self.df['Estado'] == 'Finalizado')
-            & (self.df['Subclasificacion'].isin(['Con intención suicida', 'Sin intención suicida']))
+            & (self.df['Clasificación'] == 'Confirmado LAIN')
+            & (self.df['Subclasificacion'].isin(['Con intención suicida', 'Sin intención suicida'])) # TODO: Excluir explicitamente NaN
             & (self.df['Lesion fue Autoinfligida'] == 'Si')
             & (self.df['Lesion fue Intencional'] == 'Si')
             & (self.df['Tuvo intencion de Morir'].isin(['Si', 'No']))
-            & (self.df['Region'] == 'REGION DE ANTOFAGASTA')
+            & (self.df['Region'] == 'REGION DE ANTOFAGASTA') # TODO: Extender el analisis a otras regiones para comparacion
             & (self.df['Edad Paciente'] > 0)
         ]
 
