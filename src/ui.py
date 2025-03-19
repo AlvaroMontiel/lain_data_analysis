@@ -13,7 +13,7 @@ class UI:
                              "Muertes por suicidio",
                              "Lesiones autoinfligidas",
                              "Análisis demográfico",
-                             "Regristros estadísticos mensuales",
+                             "Registros estadísticos mensuales",
                              "Análisis temporal",
                              "Análisis geográfico"]) # "Carga de Datos" no incluida
 
