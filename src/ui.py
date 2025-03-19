@@ -9,25 +9,13 @@ class UI:
             st.image("assets/logo.png", width=200)
             st.title("📊 Menú")
             return st.radio("Seleccione un módulo:",
-                            ["Inicio", "Muertes por Suicidio", "Lesiones autoinfligidas",
-                             "Datos Demográficos", "Registros Estadísticos Mensuales"]) # "Carga de Datos" no incluida
-
-    @staticmethod
-    def user_tabs():
-        """Tab para navegar por la aplicacion"""
-        tab1, tab2, tab3, tab4, tab5 = st.tabs(["Inicio", "Datos Demográficos", "Lesiones autoinfligidas",
-                                                "Muertes por Suicidio", "Registros Estadísticos Mensuales"])
-        with tab1:
-            st.write("contenido tab 1")
-        with tab2:
-            st.write("contenido tab 2")
-        with tab3:
-            st.write("contenido tab 3")
-        with tab4:
-            st.write("contenido tab 4")
-        with tab5:
-            st.write("contenido tab 5")
-
+                            ["Inicio",
+                             "Muertes por suicidio",
+                             "Lesiones autoinfligidas",
+                             "Análisis demográfico",
+                             "Regristros estadísticos mensuales",
+                             "Análisis temporal",
+                             "Análisis geográfico"]) # "Carga de Datos" no incluida
 
     @staticmethod
     def show_kpis(kpis):
@@ -40,4 +28,7 @@ class UI:
     @staticmethod
     def show_footer():
         st.markdown("---")
+        st.markdown("SEREMI de salud, región de Antofagasta. Unidad de vigilancia de enfermedades no transmisibles,"
+                    " cáncer y ambiente.")
         st.markdown("Diseñado por: **Álvaro Montiel** © 2025")
+
