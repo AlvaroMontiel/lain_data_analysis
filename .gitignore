@@ -1,3 +1,6 @@
 data/
-idea/
+.idea/
 workspace.xml
+.venv/
+.idea/workspace.xml
+src/__pycache__
