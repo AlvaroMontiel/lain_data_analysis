@@ -5,6 +5,8 @@ Responsabilidad: Limpiar y preprocesar los datos en un DataFrame de pandas.
 
 import pandas as pd
 from typing import List, Optional, Union
+from epiweeks import Week # type: ignore
+from datetime import date
 
 
 def parse_with_multiple_formats(date_str: str, possible_formats: list) -> pd.Timestamp:
@@ -255,7 +257,8 @@ class DataCleaner:
 
 
 class DateCleaner:
-    """" """
+    """" 
+    Clase para limpiar y preprocesar columnas de fechas en un DataFrame de pandas."""
 
     def __init__(self, df: pd.DataFrame) -> None:
         self.df = df
@@ -422,10 +425,143 @@ class DateCleaner:
 
 class IntegerCleaner:
     """
-    <|:)
+    A class for cleaning integer-based columns in a DataFrame, specifically designed for epidemiological data.
+    This class provides methods to clean and process integer data fields, with specific
+    functionality for handling epidemiological weeks and patient age data.
+    Attributes:
+        df (pd.DataFrame): The input DataFrame containing the data to be cleaned.
+    Methods:
+        semana_epidemiologica(): Processes and cleans epidemiological week data.
+        edad_paciente(): Processes and cleans patient age data.
+    Example:
+        >>> df = pd.DataFrame(...)
+        >>> cleaner = IntegerCleaner(df)
+        >>> cleaner.semana_epidemiologica()
     """
+
     def __init__(self, df: pd.DataFrame) -> None:
         self.df = df
 
     def semana_epidemiologica(self):
-        pass
+        """
+        Calculate the epidemiological week for each record based on event date or emergency care date.
+        The function performs the following operations:
+        1. Calculates epidemiological week using 'Fecha del evento' (event date) if available
+        2. For records without event date, uses 'Fecha Atencion Urgencia' (emergency care date)
+        3. Handles missing values based on percentage of nulls:
+            - If nulls < 10%: imputes with median and logs to Excel
+            - If nulls >= 10%: removes rows and logs to Excel
+        Notes:
+            - Uses Week.fromdate() to calculate epidemiological week
+            - Creates logs in 'data/logs/' directory
+            - Modifies the dataframe in place
+        Returns:
+            None
+        """
+        
+        week_mask = self.df['Fecha del evento'].notnull()
+        week_mask = self.df['Fecha del evento'].notnull()
+        if week_mask.any():
+            # Calcula la semana epidemiológica usando Week.fromdate()
+            self.df.loc[week_mask, 'Semana Epidemiologica'] = self.df.loc[week_mask, 'Fecha del evento'].apply(
+                lambda x: Week.fromdate(x).week if isinstance(x, (date, pd.Timestamp)) else pd.NaT
+            )
+
+        mask_false = ~week_mask
+        if mask_false.any():
+            # Calcula la semana epidemiológica de los valores restantes
+            self.df.loc[mask_false, 'Semana Epidemiologica'] = self.df.loc[mask_false, 'Fecha Atencion Urgencia'].apply(
+                lambda x: Week.fromdate(x).week if isinstance(x, (date, pd.Timestamp)) else pd.NaT
+            )
+        
+        mask_null = self.df['Semana Epidemiologica'].isnull()
+        prop_na_sem_epidem = self.df['Semana Epidemiologica'].isnull().mean()
+        if 0 < prop_na_sem_epidem < 0.1:
+            # Imputar con la mediana
+            median_semana = self.df['Semana Epidemiologica'].median()
+            self.df['Semana Epidemiologica'].fillna(median_semana, inplace=True)
+            self.df.loc[mask_null, 'Semana Epidemiologica'].to_excel(
+                'data/logs/semana_epidemiologica_mediana.xlsx',
+                sheet_name='Semana Epidemiologica Imputada'
+            )
+        elif prop_na_sem_epidem >= 0.1:
+            # Eliminar filas con NaT
+            self.df = self.df[self.df['Semana Epidemiologica'].notnull()]
+            self.df.loc[mask_null, 'Semana Epidemiologica'].to_excel(
+                'data/logs/semana_epidemiologica_eliminadas.xlsx',
+                sheet_name='Semana Epidemiologica Eliminada'
+            )
+
+    def edad_paciente(self):
+        """
+        Calcula la edad en años a partir de la 'Fecha Nacimiento Paciente' y la 'Fecha del evento'.
+        La edad se almacena en una nueva columna llamada 'Edad Calculada'.
+
+        Lógica:
+        - Si alguna de las dos fechas está vacía (NaT), la edad se mantendrá en NaN.
+        - Se toman la diferencia en días y se divide entre 365 para obtener años aproximados.
+        - Si la diferencia de días resultara negativa (evento antes de nacer), se marca NaN 
+            (o se podrían descartar esos casos como registros inválidos).
+        """
+
+        # 1. Verificar que ambas columnas existan en el DataFrame
+        if 'Fecha Nacimiento Paciente' not in self.df.columns or 'Fecha del evento' not in self.df.columns:
+            print("No se encontraron las columnas requeridas para calcular la edad.")
+            return
+    
+        # 2. Crear una máscara para las filas donde ambas fechas NO sean nulas
+        mask_fechas_validas = (
+            self.df['Fecha Nacimiento Paciente'].notnull() & 
+            self.df['Fecha del evento'].notnull()
+        )
+
+        # 3. Calcular la diferencia en días (vectorizado) solo para las filas con fechas válidas
+        #    Esto devuelve un objeto Timedelta.
+        diferencia_dias = (
+            self.df.loc[mask_fechas_validas, 'Fecha del evento'] -
+            self.df.loc[mask_fechas_validas, 'Fecha Nacimiento Paciente']
+        ).dt.days
+        
+        # 4. Convertir la diferencia de días a años (aprox), ignorando los valores negativos o inválidos
+        #    Si quieres descartar los casos negativos, puedes marcar la edad como NaN o 0.
+        #    Aquí, los marcamos como NaN para indicar inconsistencia.
+        edad_approx = diferencia_dias.apply(
+            lambda d: d // 365 if d is not None and d >= 0 else float('nan')
+        )
+
+        # 5. Asignar la columna "Edad Calculada" en el DataFrame
+        #    Para filas que no cumplen la máscara, quedará en NaN por defecto.
+        self.df['Edad Calculada'] = float('nan')  # Inicializa con NaN
+        self.df.loc[mask_fechas_validas, 'Edad Calculada'] = edad_approx
+
+        # 6. Calcular edades faltantes a partir de Fecha Atencion Urgencia
+        mask_edades_faltantes = self.df['Edad Calculada'].isnull() & self.df[
+            'Fecha Atencion Urgencia'].notnull()
+
+        if mask_edades_faltantes.any():
+            diferencia_dias = (
+                self.df.loc[mask_edades_faltantes, 'Fecha Atencion Urgencia'] -
+                self.df.loc[mask_edades_faltantes, 'Fecha Nacimiento Paciente']
+            ).dt.days
+            edad_approx = diferencia_dias.apply(
+                lambda d: d // 365 if d is not None and d >= 0 else float('nan')
+            )
+            self.df.loc[mask_edades_faltantes, 'Edad Calculada'] = edad_approx
+
+        # 7. Imputar la mediana de las edades faltantes si hay < 10% de datos faltantes
+        prop_na_edad = self.df['Edad Calculada'].isnull().mean()
+        mask_edad_null = self.df['Edad Calculada'].isnull()
+
+        if 0 < prop_na_edad < 0.1:
+            median_edad = self.df['Edad Calculada'].median()
+            self.df['Edad Calculada'].fillna(median_edad, inplace=True)
+            self.df.loc[mask_edad_null, 'Edad Calculada'].to_excel(
+                'data/logs/edad_paciente_media.xlsx',
+                sheet_name='Edad Paciente Imputada'
+            )
+        elif prop_na_edad >= 0.1:
+            self.df = self.df[self.df['Edad Calculada'].notnull()]
+            self.df.loc[mask_edad_null, 'Edad Calculada'].to_excel(
+                'data/logs/edad_paciente_eliminadas.xlsx',
+                sheet_name='Edad Paciente Eliminada'
+            )
