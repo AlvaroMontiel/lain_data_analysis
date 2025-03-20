@@ -6,7 +6,7 @@ class UI:
         """Menú de navegación lateral"""
 
         with st.sidebar:
-            st.image("assets/logo.png", width=200)
+            st.image("/home/alvaro/PycharmProjects/lain_data_analysis/assets/logo.png", width=200) # TODO: Calcular ruta relativa
             st.title("📊 Menú")
             return st.radio("Seleccione un módulo:",
                             ["Inicio",
