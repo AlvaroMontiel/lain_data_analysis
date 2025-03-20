@@ -230,22 +230,6 @@ class DataCleaner:
         """
         self.df.rename(columns=columns_mapping, inplace=True)
 
-    def drop_duplicates(self, subset: Optional[List[str]] = None, keep: str = "first") -> None:
-        """
-        Elimina filas duplicadas en función de un subconjunto de columnas.
-
-        Args:
-            subset (List[str] | None): Columnas a considerar para identificar duplicados.
-            keep (str): Indica cuál duplicado mantener: 'first', 'last' o False para eliminar todos.
-
-        Ejemplo:
-            cleaner.drop_duplicates(subset=["id_paciente"])
-        """
-        before_count = len(self.df)
-        self.df.drop_duplicates(subset=subset, keep=keep, inplace=True)
-        after_count = len(self.df)
-        print(f"Eliminados {before_count - after_count} duplicados.")
-
     def get_clean_data(self) -> pd.DataFrame:
         """
         Retorna el DataFrame limpio (procesado hasta el momento).
@@ -565,3 +549,27 @@ class IntegerCleaner:
                 'data/logs/edad_paciente_eliminadas.xlsx',
                 sheet_name='Edad Paciente Eliminada'
             )
+
+class DuplicateCleaner():
+    """
+    Clase para buscar y eliminar duplicados
+    Usara los campos Identificacion Paciente
+    ID/RUT Paciente
+    Nombre Paciente
+    Apellido Parterno Paciente
+    Apellido Materno Paciente
+    Región
+    Comuna
+    Establecimiento de Salud
+    """
+
+    def __init__(self, df: pd.DataFrame) -> None:
+        self.df = df
+
+    def data_normalization(self):
+        """
+        Normaliza los datos de las columnas de texto en el DataFrame que se usaran para detectar duplicados.
+        """
+        self.df = self.df.apply(lambda x: x.str.normalize('NFKD').str.encode('ascii', errors='ignore').str.decode('utf-8'))
+
+
