@@ -15,7 +15,7 @@ def main():
     selected_option = UI.sidebar()
 
     # ✅ NOMBRE DEL ARCHIVO
-    ruta_excel = "data/reporte_formularios_250212_1610.xlsx"
+    ruta_excel = "/home/alvaro/PycharmProjects/lain_data_analysis/data/reporte_formularios_250212_1610.xlsx"
     hoja_excel = "reporte_formularios_250212_1610"
 
     loader = DataLoader(file_path=ruta_excel, sheet_name=hoja_excel)
