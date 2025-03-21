@@ -552,24 +552,139 @@ class IntegerCleaner:
 
 class DuplicateCleaner():
     """
-    Clase para buscar y eliminar duplicados
-    Usara los campos Identificacion Paciente
-    ID/RUT Paciente
-    Nombre Paciente
-    Apellido Parterno Paciente
-    Apellido Materno Paciente
-    Región
-    Comuna
-    Establecimiento de Salud
+    Clase para buscar y eliminar duplicados.
+    Usará los campos:
+        - Identificacion Paciente
+        - ID/RUT Paciente
+        - Nombre Paciente
+        - Apellido Paterno Paciente
+        - Apellido Materno Paciente
+        - Región
+        - Comuna
+        - Establecimiento de Salud
     """
 
     def __init__(self, df: pd.DataFrame) -> None:
         self.df = df
+        self.columns_to_normalize = [
+            "Identificacion Paciente",
+            "Nombre Paciente",
+            "Apellido Paterno Paciente",
+            "Apellido Materno Paciente"
+        ]
 
-    def data_normalization(self):
+    def data_normalization(self) -> None:
         """
-        Normaliza los datos de las columnas de texto en el DataFrame que se usaran para detectar duplicados.
+        Normaliza los datos de las columnas de texto en el DataFrame que se usarán para detectar duplicados.
+        Convierte a minúsculas, elimina tildes y espacios extra.
         """
-        self.df = self.df.apply(lambda x: x.str.normalize('NFKD').str.encode('ascii', errors='ignore').str.decode('utf-8'))
+        for col in self.columns_to_normalize:
+            if col in self.df.columns:
+                self.df[col] = (
+                    self.df[col].filla('')
+                    .astype(str)
+                    .str.strip()
+                    .str.lower()
+                    .str.normalize('NFKD')
+                    .str.encode('ascii', errors='ignore')
+                    .str.decode('utf-8')
+                )
+
+        self.df['nombre_completo'] = (
+            self.df['Nombre Paciente'] +
+            self.df['Apellido Paterno Paciente'] +
+            self.df['Apellido Materno Paciente']
+        )
+
+    def run_id_normalization(self) -> None: 
+        """
+        Prepara el rut, pasaporte e identicacion local para la busqueda de duplicados
+        1. Todos los registros donde la identificación es RUN y contiene guión, se separa en RUN y DV no se guarda
+            1.1. Limpiar los registros anteriores de caracteres no numéricos 
+            1.2 Calculo el DV para todos los registros anteriores  
+
+        2. Pensar de que hacer con los registros que no son RUN
+        """
+        # Split RUN/RUT
+        rut_mask = (
+            self.df['Identificacion Paciente'] == 'RUN'
+            ) & (self.df['ID/RUT Paciente'].str.contains('-'))
+
+        if rut_mask.any():
+            self.df.loc[rut_mask, 'ID/RUT Paciente'] = self.df.loc[rut_mask, 'ID/RUT Paciente'].str.split(
+                '-', expand=False
+            )[0]
+            self.df.loc[rut_mask, 'ID/RUT Paciente'] = self.df.loc[rut_mask, 'ID/RUT Paciente'].str.replace(
+            '[^0-9]', '', regex=True
+            )
+            self.df.loc[rut_mask, 'dv'] = self.df.loc[rut_mask, 'ID/RUT Paciente'].apply(
+                lambda x: int(x[-1]) if x[-1].isdigit() else None
+            )
 
 
+        if self.df['Identificacion Paciente'].str.contains('-').any():
+            self.df[['RUN/ID Paciente', 'dv']] = self.df['Identificacion Paciente'].str.split(
+                '-', expand=False)
+
+
+        # Solo números
+        self.df['RUN/ID Paciente'] = self.df['RUN/ID Paciente'].str.replace(
+            '[^0-9]', '', regex=True
+            )
+
+        if 'ID/RUT Paciente' in self.df.columns:
+            self.df['dv'] = self.df['ID/RUT Paciente'].apply(
+                lambda x: int(x[-1]) if x[-1].isdigit() else None
+            )
+
+
+    def find_duplicates(self, keep: str = "first") -> pd.DataFrame:
+        """
+        Detecta y elimina duplicados basándose en las columnas definidas.
+
+        Args:
+            keep (str): Define qué duplicado conservar. Puede ser 'first', 'last' o False para eliminar todos.
+
+        Returns:
+            pd.DataFrame: DataFrame sin duplicados.
+        """
+        if not all(col in self.df.columns for col in self.duplicate_columns):
+            raise ValueError("No todas las columnas necesarias están presentes en el DataFrame.")
+
+        # Detectar duplicados
+        duplicates = self.df.duplicated(subset=self.duplicate_columns, keep=keep)
+        print(f"Se encontraron {duplicates.sum()} duplicados.")
+
+        # Eliminar duplicados
+        self.df = self.df[~duplicates]
+
+    def get_cleaned_data(self) -> pd.DataFrame:
+        """
+        Retorna el DataFrame limpio después de eliminar duplicados.
+
+        Returns:
+            pd.DataFrame: DataFrame sin duplicados.
+        """
+        return self.df
+
+
+class ApplyCleaners():
+    """
+    Esta clase aplica todos los limpiadores de datos a un DataFrame.
+    """
+
+    def __init__(self):
+        pass
+
+    def apply_cleaners(self, df: pd.DataFrame) -> pd.DataFrame:
+        """
+        Aplica todos los limpiadores de datos a un DataFrame.
+
+        Args:
+            df (pd.DataFrame): El DataFrame que se desea limpiar.
+
+        Returns:
+            pd.DataFrame: El DataFrame limpio.
+        """
+
+        pass
