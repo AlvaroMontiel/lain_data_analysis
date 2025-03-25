@@ -1,6 +1,6 @@
 """
-Módulo: data_cleaner
-Responsabilidad: Limpiar y preprocesar los datos en un DataFrame de pandas.
+Module: data_cleaner
+Responsability: Clean and make a preprocess of data in a pandas DataFrame.
 """
 
 import pandas as pd
@@ -13,8 +13,8 @@ from fuzzywuzzy import fuzz
 
 def parse_with_multiple_formats(date_str: str, possible_formats: list) -> pd.Timestamp:
     """
-    Intenta convertir `date_str` a objeto datetime probando cada formato en `possible_formats`.
-    Si ninguno funciona, devuelve pd.NaT.
+    Attempts to convert `date_str` to a datetime object by trying each format in `possible_formats`.
+    If none work, returns pd.NaT.
     """
     for fmt in possible_formats:
         try:
@@ -27,6 +27,13 @@ def parse_with_multiple_formats(date_str: str, possible_formats: list) -> pd.Tim
     return pd.NaT
 
 def digito_verificador(rut):
+    """
+    Calculates the verification digit of a Chilean RUT.
+    Args:
+        rut (int): The base number of the RUT.
+    Returns:
+        int: The calculated verification digit.
+    """
     reversed_digits = map(int, reversed(str(rut)))
     factors = cycle(range(2, 8))
     s = sum(d * f for d, f in zip(reversed_digits, factors))
@@ -36,19 +43,30 @@ def digito_verificador(rut):
 
 class FilterData:
     """
-    Clase para llevar a cabo tareas de limpieza en un DataFrame de pandas.
+    Class for performing cleaning tasks on a pandas DataFrame.
 
-    Atributos:
-        df (pd.DataFrame): El DataFrame que se está limpiando.
-        selected_variables: Variables seleccionadas para el analisis
+    The DataFrame (`df`) is expected to contain specific columns with the following structure:
+        - 'Origen Caso' (str): Source of the case.
+        - 'Nr Folio' (int): Case number.
+        - 'Tipo de Caso' (str): Type of case.
+        - 'Fecha Atencion Urgencia' (datetime): Date of emergency care.
+        - 'Semana Epidemiologica' (int): Epidemiological week.
+        - 'Estado' (str): Current state of the case.
+        - 'Clasificacion' (str): Classification of the case.
+        - 'Subclasificacion' (str): Subclassification of the case.
+        - Additional columns as listed in `selected_variables`.
+
+    Attributes:
+        df (pd.DataFrame): The DataFrame being cleaned.
+        selected_variables: Variables selected for analysis.
     """
 
     def __init__(self, df: pd.DataFrame):
         """
-        Inicializa la clase con el DataFrame que se desea limpiar, las variables seleccionadas para el analisis.
+        Initializes the class with the DataFrame to be cleaned and the variables selected for analysis.
 
         Args:
-            df (pd.DataFrame): El DataFrame original que se va a limpiar.
+            df (pd.DataFrame): The original DataFrame to be cleaned.
         """
         # No copia internamente el DataFrame para manipularlo
         self.df = df
@@ -114,19 +132,19 @@ class FilterData:
 
     def filter_columns(self, selected_variables: List[str]) -> None:
         """
-        Selecciona las variables ya predefinidas que se requieren en el analisis.
+        Filters the predefined columns required for the analysis.
 
         Args:
-            selected_variables (List[str]): Lista de variables a seleccionar en el dataframe.
+            selected_variables (List[str]): Lista de columnas a filtrar en el DataFrame.
         """
         self.df = self.df.loc[:, selected_variables]
 
     def get_filter_data(self) -> None:
         """
-        Seleccion de casos que van a entrar en el analisis estadistico
+        Selection of cases to be included in the statistical analysis.
 
         Args:
-            No recibe argumentos
+            None
         """
         self.df = self.df[
             (self.df['Origen Caso'].isin(['Notificación LAIN', 'Notificación física']))
@@ -141,14 +159,62 @@ class FilterData:
  
 
 class DateCleaner:
-    """" 
-    Clase para limpiar y preprocesar columnas de fechas en un DataFrame de pandas."""
+    """
+    A class for cleaning and preprocessing date-related columns in a pandas DataFrame.
+    This class provides methods to clean, validate, and ensure coherence of date information
+    in a DataFrame, specifically handling three main date columns:
+    The class implements various cleaning strategies including:
+    - Date format standardization
+    - Handling of NaT (Not a Time) values
+    - Date coherence validation
+    - Data imputation for missing values
+    - Logging of modifications for accountability
+    All modifications to the data are logged in Excel files stored in the data/logs directory.
+        df (pd.DataFrame): The input DataFrame containing the date columns to be cleaned.
+        variables_log (List[str]): List of variables to be included in log files when recording changes.
+    Example:
+        >>> df = pd.DataFrame({'Fecha Atencion Urgencia': ['2023-01-01', '2023/02/01'],
+                              'Fecha del evento': ['2023-01-01', '2023-02-01'],
+                              'Fecha Nacimiento Paciente': ['1990-01-01', '1991-01-01']})
+        >>> cleaner = DateCleaner(df)
+        >>> cleaned_df = cleaner.get_clean_date()
+    Notes:
+        - The class assumes the existence of specific date columns in the DataFrame
+        - All cleaning operations are performed in-place on the DataFrame
+        - Log files are created in the 'data/logs' directory for tracking changes
+    """
 
     def __init__(self, df: pd.DataFrame) -> None:
+        """
+        Initializes the class with the DataFrame to be cleaned.
+
+        Args:
+            df (pd.DataFrame): The original DataFrame to be cleaned.
+
+        Attributes:
+            variables_log (List[str]): List of variables to log in case of invalid dates.
+        """
         self.df = df
         self.variables_log = ['Nr Folio', 'ID/RUT Paciente', 'Comuna']
 
     def review_format(self) -> None:
+        """
+        This method processes three date columns in the DataFrame:
+        - 'Fecha Atencion Urgencia' (Emergency Care Date)
+        - 'Fecha del evento' (Event Date)  
+        - 'Fecha Nacimiento Paciente' (Patient Birth Date)
+        For each column, it attempts to parse dates using multiple common formats.
+        Invalid or unparseable dates are set to NaT (Not a Time).
+        Records with unparseable dates are logged to separate Excel files in the data/logs directory.
+        The following date formats are supported:
+        - DD/MM/YYYY
+        - DD-MM-YYYY 
+        - YYYY-MM-DD
+        Side Effects:
+            - Modifies the date columns in the DataFrame in place
+            - Creates Excel log files for records with invalid dates
+        """
+        
         possible_formats = ["%d/%m/%Y", "%d-%m-%Y", "%Y-%m-%d"]  # Define los formatos esperados
 
         # Conviertes la columna intentando cada formato
@@ -175,12 +241,23 @@ class DateCleaner:
 
     def review_nat (self) -> None:
         """
-        Método que se aplica inmediatamente después de date_adjust().
-        Revisa valores NaT en:
-          - Fecha Atencion Urgencia
-          - Fecha del evento
-          - Fecha Nacimiento Paciente
-        e implementa la estrategia de imputación o descarte según la lógica definida.
+        Reviews and handles NaT (Not a Time) values in date columns through a series of steps:
+
+            1. If 'Fecha Atencion Urgencia' is NaT but 'Fecha del evento' exists, equals them
+            2. If 'Fecha Atencion Urgencia' has ≥10% NaT, imputes median value
+            3. If 'Fecha del evento' is NaT but 'Fecha Atencion Urgencia' exists, equals them
+            4. If any remaining NaT in 'Fecha del evento', imputes median value
+            5. For 'Fecha Nacimiento Paciente' NaT values:
+                - Infers from age if patient >10 years old
+                - If <10% NaT remain, imputes median
+                - If ≥10% NaT remain, removes those rows
+
+        The method logs all changes to Excel files in data/logs/ directory.
+
+        Notes:
+            - Should be called immediately after date_adjust()
+            - Modifies the dataframe in-place
+            - Creates log files for tracking changes
         """
 
         # -------------------------------------------------------------
@@ -286,7 +363,20 @@ class DateCleaner:
                 )
 
     def review_coherence(self):
-        """Se aplica posterior a review_nat"""
+        """
+        Check and fix coherence of event dates in the DataFrame.
+        After running review_nat(), this method ensures chronological consistency
+        between 'Fecha del evento' (Event Date) and 'Fecha Atencion Urgencia' 
+        (Emergency Care Date). It makes corrections when:
+        1. Event Date is after Emergency Care Date:
+           Updates Emergency Care Date to match Event Date
+        2. Emergency Care Date is before Event Date:
+           Updates Event Date to match Emergency Care Date
+        When corrections are made, the affected records are logged to Excel files:
+        - data/logs/incoherence_date_1.xlsx for first case
+        - data/logs/incoherence_date_2.xlsx for second case
+        """
+        
         incoherence_mask = self.df['Fecha del evento'].notnull() & (
             self.df['Fecha del evento'] > self.df['Fecha Atencion Urgencia']
         )
@@ -308,31 +398,36 @@ class DateCleaner:
 
     def get_clean_date(self) -> pd.DataFrame:
         """
-        Devuelve el DataFrame limpio después de aplicar todos los métodos de limpieza.
+        This method processes the DataFrame by applying sequential cleaning operations:
+        1. Reviews format issues in dates
+        2. Checks for NaT (Not a Time) values
+        3. Verifies data coherence between dates
+
+        The cleaned DataFrame with format corrections, NaT handling, and coherence checks applied.
+
+        Returns:
+            pd.DataFrame: The cleaned DataFrame after applying all date cleaning methods
         """
+
         # Aplicar metodos de limpieza de la clase
         self.review_format()
         self.review_nat()
-        self.review_coherence
+        self.review_coherence()
 
         return self.df
 
 
 class IntegerCleaner:
     """
-    A class for cleaning integer-based columns in a DataFrame, specifically designed for epidemiological data.
+    Class for cleaning integer-based columns in a DataFrame
+
+    A class for cleaning integer-based columns in a DataFrame Specifically designed for epidemiological data.
     This class provides methods to clean and process integer data fields, with specific
     functionality for handling epidemiological weeks and patient age data.
+    
     Attributes:
         df (pd.DataFrame): The input DataFrame containing the data to be cleaned.
-    Methods:
-        semana_epidemiologica(): Processes and cleans epidemiological week data.
-        edad_paciente(): Processes and cleans patient age data.
-    Example:
-        >>> df = pd.DataFrame(...)
-        >>> cleaner = IntegerCleaner(df)
-        >>> cleaner.semana_epidemiologica()
-    """
+        """
 
     def __init__(self, df: pd.DataFrame) -> None:
         self.df = df
@@ -389,14 +484,27 @@ class IntegerCleaner:
 
     def edad_paciente(self):
         """
-        Calcula la edad en años a partir de la 'Fecha Nacimiento Paciente' y la 'Fecha del evento'.
-        La edad se almacena en una nueva columna llamada 'Edad Calculada'.
-
-        Lógica:
-        - Si alguna de las dos fechas está vacía (NaT), la edad se mantendrá en NaN.
-        - Se toman la diferencia en días y se divide entre 365 para obtener años aproximados.
-        - Si la diferencia de días resultara negativa (evento antes de nacer), se marca NaN 
-            (o se podrían descartar esos casos como registros inválidos).
+        Calculate patient age based on birth date and event date.
+        This method calculates the age in years using 'Fecha Nacimiento Paciente' (birth date)
+        and 'Fecha del evento' (event date) columns. Results are stored in a new 'Edad Calculada'
+        (calculated age) column.
+        The calculation follows these steps:
+        1. Verify required columns exist
+        2. Calculate age using event date - birth date
+        3. For missing ages, attempt calculation using emergency care date
+        4. Handle missing values based on percentage:
+            - If <10% missing: impute with median age
+            - If ≥10% missing: remove rows with missing age
+        Notes:
+            - Ages are calculated by dividing days difference by 365
+            - Negative ages (event before birth) are marked as NaN
+            - Missing dates result in NaN ages
+            - Imputed/removed age records are logged to Excel files
+        Returns:
+            None. Modifies the DataFrame in place by:
+            - Adding 'Edad Calculada' column
+            - Potentially removing rows with invalid ages
+            - Creating log files for imputed/removed ages
         """
 
         # 1. Verificar que ambas columnas existan en el DataFrame
@@ -463,7 +571,17 @@ class IntegerCleaner:
 
     def get_clean_integer(self) -> pd.DataFrame:
         """
-        Devuelve el DataFrame limpio después de aplicar todos los métodos de limpieza.
+        Returns the cleaned DataFrame after applying all cleaning methods.
+
+        This method applies all the cleaning methods defined in the class
+        to the DataFrame, specifically:
+        - Cleaning epidemiological week data
+        - Cleaning patient age data
+
+        Returns
+        -------
+        pd.DataFrame
+            The cleaned DataFrame with all cleaning transformations applied
         """
         # Aplicar metodos de limpieza de la clase
         self.semana_epidemiologica()
@@ -474,24 +592,30 @@ class IntegerCleaner:
 
 class DuplicateCleaner():
     """
-    Clase para buscar y eliminar duplicados.
-    Usará los campos:
-        - ID/RUT Paciente
-        - Nombre Paciente
-        - Apellido Paterno Paciente
-        - Apellido Materno Paciente
-        - Comuna
-        - Establecimiento de Salud
-        - Fecha del evento
-        - Fecha de nacimiento del paciente
+    Class for detecting and resolving duplicate records in a DataFrame.
 
-    Se entiende que si los nombres normalizados, los RUTs o IDs,  las fechas de nacimiento, 
-     las fechas del evento son iguales y la comuna donde ocurre el evento son iguales; entonces se trata del mismo paciente.
+    This class identifies duplicates based on normalized text fields, RUT/ID validation, 
+    and date comparisons, with a configurable similarity threshold. It provides methods 
+    to log duplicates, retain the most complete record, and clean the DataFrame.
 
-     Existe la posibilidad de tener campos que esten vacios o sean ligeramente diferentes por lo 
-     que quiero considerar un umbral de igualdad del 90%"""
+    Attributes:
+        df (pd.DataFrame): The input DataFrame containing the data to be cleaned.
+        columns_to_normalize (List[str]): List of text columns to normalize for comparison.
+        duplicate_groups (List[List[int]]): Groups of indices for detected duplicate records.
+        log_duplicados (List[pd.DataFrame]): Logs of detected duplicate records.
+    """
 
     def __init__(self, df: pd.DataFrame) -> None:
+        """
+        Initializes the class with the DataFrame to be cleaned.
+
+        Attributes:
+            df (pd.DataFrame): The input DataFrame containing the data to be cleaned.
+            columns_to_normalize (List[str]): List of text columns to normalize for comparison.
+            duplicate_groups (List[List[int]]): Groups of indices for detected duplicate records.
+            log_duplicados (List[pd.DataFrame]): Logs of detected duplicate records.
+        """
+
         self.df = df
         self.columns_to_normalize = [
             "Identificacion Paciente",
@@ -504,13 +628,25 @@ class DuplicateCleaner():
 
     def name_normalization(self) -> None:
         """
-        Normaliza los datos de las columnas de texto en el DataFrame que se usarán para detectar duplicados.
-        Convierte a minúsculas, elimina tildes y espacios extra.
+        Normalizes text columns for duplicate detection by applying standardization transformations.
+        This method processes specified columns in the DataFrame by:
+        1. Converting text to lowercase
+        2. Removing accents and diacritical marks
+        3. Trimming leading/trailing spaces
+        4. Creating a 'nombre_completo' field by concatenating patient name fields
+        The normalization is applied to all columns specified in self.columns_to_normalize.
+        Empty values are filled with blank strings before processing.
+        Returns:
+            None
+        Side effects:
+            - Modifies the DataFrame columns in-place
+            - Creates a new 'nombre_completo' column by concatenating name fields
         """
+        
         for col in self.columns_to_normalize:
             if col in self.df.columns:
                 self.df[col] = (
-                    self.df[col].filla('')
+                    self.df[col].fillna('')
                     .astype(str)
                     .str.strip()
                     .str.lower()
@@ -525,15 +661,33 @@ class DuplicateCleaner():
             self.df['Apellido Materno Paciente']
         )
 
-    def run_id_normalization(self) -> None: 
+    def normalize_identifications_ids(self) -> None:
         """
-        Prepara el rut, pasaporte e identicacion local para la busqueda de duplicados
-        1. Todos los registros donde la identificación es RUN y contiene guión, se separa en RUN y DV no se guarda
-            1.1. Limpiar los registros anteriores de caracteres no numéricos 
-            1.2 Calulo el DV para todos los registros anteriores  
+        Normalizes identification fields for patients by processing RUN/RUT and other ID types.
 
-        2. Pensar de que hacer con los registros que no son RUN
-        """
+        This method handles two main cases:
+        1. For RUN identifications with hyphens:
+            - Splits the ID into base number and verification digit
+            - Cleans non-numeric characters from base number
+            - Calculates and verifies the verification digit
+
+        2. For non-RUN identifications:
+            - Removes non-numeric characters
+            - Converts to integer format where possible
+
+        The method modifies the following DataFrame columns in-place:
+        - 'id_rut_id_base': Contains the cleaned numeric base ID
+        - 'dv_original': Original verification digit (for RUN only)
+        - 'dv_calculado': Calculated verification digit (for RUN only)
+
+        Returns:
+            None. The method modifies the DataFrame in-place.
+
+        Note:
+            - RUN/RUT is the Chilean national ID number
+            - The method assumes the existence of 'Identificacion Paciente' and 'ID/RUT Paciente' columns
+            """
+
         # Normalizar los RUN/RUT y calcular el dígito verificador
         rut_mask = (
             self.df['Identificacion Paciente'] == 'RUN'
@@ -572,10 +726,28 @@ class DuplicateCleaner():
                 lambda x: int(x) if x.isdigit() else None
             )
 
-    def find_duplicates(self, similarity_threshold=90):
+    def find_duplicates(self, similarity_threshold=90) -> pd.DataFrame:
         """
-        Encuentra duplicados en el DataFrame considerando un umbral de similitud.
-        Devuelve un DataFrame con los registros marcados como duplicados.
+        Find and mark duplicate records in the DataFrame based on similarity comparison.
+        This method identifies potential duplicate records by comparing a combined key of multiple fields
+        using fuzzy string matching. Records are considered duplicates if their similarity exceeds the
+        specified threshold.
+        Args:
+            similarity_threshold (int, optional): The minimum similarity percentage required to consider
+                two records as duplicates. Defaults to 90.
+        Returns:
+            pd.DataFrame: A DataFrame containing only the identified duplicate records.
+        Notes:
+            - The method normalizes names and IDs before comparison
+            - Comparison is based on: ID/RUT, full name, birth date, event date, and commune
+            - Duplicates are marked in the original DataFrame with 'es_duplicado' column
+            - Duplicate groups are stored in self.duplicate_groups
+            - Detailed logs are saved to 'data/logs/duplicados.xlsx' and 'log_duplicados.txt'
+        Side Effects:
+            - Modifies the original DataFrame by adding 'es_duplicado' and 'compare_key' columns
+            - Creates log files with duplicate records information
+            - Updates self.duplicate_groups and self.log_duplicados
+
         """
 
         # Normalizar previamente nombres e identificaciones
@@ -647,11 +819,26 @@ class DuplicateCleaner():
 
         return self.df[self.df['es_duplicado']]
 
-    def keep_best_record(self):
+    def keep_best_record(self) -> pd.DataFrame:
         """
-        Conserva solo el mejor registro entre los duplicados basado en la completitud de datos.
-        Genera log de registros descartados y elimina estos registros del DataFrame.
+        For each group of duplicate records, keeps the one with the most non-null values
+        and discards the others. Discarded records are logged to a text file including
+        key identifying information.
+            pd.DataFrame: DataFrame with only the most complete record from each duplicate group,
+                         with index reset. Updates the internal DataFrame state.
+        Notes:
+            - Writes discarded records to 'log_registros_descartados.txt'
+            - Uses the following columns for logging discarded records:
+                - ID/RUT Paciente
+                - Nombre Paciente 
+                - Apellido Paterno Paciente
+                - Apellido Materno Paciente
+                - Fecha de nacimiento del paciente
+                - Fecha del evento
+                - Comuna
+                - Establecimiento de Salud
         """
+
         indices_to_drop = []
         log_descartados = []
 
@@ -681,8 +868,16 @@ class DuplicateCleaner():
     
     def get_clean_duplicates(self) -> pd.DataFrame:
         """
-        Devuelve el DataFrame limpio después de aplicar todos los métodos de limpieza.
+        This method applies cleaning methods of the class to handle duplicates:
+        1. Finds duplicate records using find_duplicates()
+        2. Keeps the best version of each duplicate using keep_best_record()
+        Returns
+        -------
+        pd.DataFrame
+            The cleaned DataFrame with duplicates handled, where only the best version
+            of each duplicate record is kept.
         """
+        
         # Aplicar metodos de limpieza de la clase
         self.find_duplicates()
         self.keep_best_record()
@@ -700,25 +895,46 @@ class CategoricalCleaner():
 
 class ApplyCleaners():
     """
-    Esta clase aplica todos los limpiadores de datos a un DataFrame.
+    This class orchestrates the data cleaning process by sequentially applying multiple cleaners to a pandas DataFrame.
+
+    The `ApplyCleaners` class is designed to streamline the data preprocessing workflow by integrating various cleaning 
+    operations into a single pipeline. It applies the following steps in order:
+    
+    1. **FilterData**: Filters and selects relevant columns and rows based on predefined criteria.
+    2. **DateCleaner**: Cleans and preprocesses date-related columns, handling invalid or missing dates.
+    3. **IntegerCleaner**: Processes integer-based columns, such as epidemiological weeks and patient age.
+    4. **DuplicateCleaner**: Identifies and resolves duplicate records based on normalized text fields and other criteria.
+    5. **CategoricalCleaner** (future implementation): Will handle categorical data cleaning.
+
+    This class ensures that the DataFrame is cleaned comprehensively and consistently, making it ready for analysis or 
+    further processing.
+
+    Attributes:
+        df (pd.DataFrame): The input DataFrame containing the data to be cleaned.
     """
 
-    def __init__(self):
-        pass
+    def __init__(self, df: pd.DataFrame) -> None:
+        self.df = df
 
     def apply_cleaners(self, df: pd.DataFrame) -> pd.DataFrame:
         """
-        Aplica todos los limpiadores de datos a un DataFrame.
+        Apply all data cleaners to a DataFrame sequentially.
+
+        This method processes the input DataFrame through multiple cleaning stages:
+        1. Filtering selected variables
+        2. Cleaning date columns
+        3. Cleaning integer columns
+        4. Removing duplicates
 
         Args:
-            df (pd.DataFrame): El DataFrame que se desea limpiar.
+            df (pd.DataFrame): The DataFrame to be cleaned.
 
         Returns:
-            pd.DataFrame: El DataFrame limpio.
+            pd.DataFrame: The cleaned DataFrame after applying all cleaning operations.
         """
 
         self.filter_data = FilterData(df)
-        self.filter_data.select_variables(self.filter_data.selected_variables)
+        self.filter_data.filter_columns(self.filter_data.selected_variables)
         self.filter_data.get_filter_data()
 
         self.date_cleaner = DateCleaner(self.filter_data.df)
