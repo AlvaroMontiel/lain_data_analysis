@@ -7,6 +7,8 @@ import pandas as pd
 from typing import List, Optional, Union
 from epiweeks import Week # type: ignore
 from datetime import date
+from itertools import cycle
+from fuzzywuzzy import fuzz
 
 
 def parse_with_multiple_formats(date_str: str, possible_formats: list) -> pd.Timestamp:
@@ -24,8 +26,15 @@ def parse_with_multiple_formats(date_str: str, possible_formats: list) -> pd.Tim
     # Si ningún formato encaja, devolvemos NaT
     return pd.NaT
 
+def digito_verificador(rut):
+    reversed_digits = map(int, reversed(str(rut)))
+    factors = cycle(range(2, 8))
+    s = sum(d * f for d, f in zip(reversed_digits, factors))
+    dv = (-s) % 11
+    return 'K' if dv == 10 else 0 if dv == 11 else dv
 
-class DataCleaner:
+
+class FilterData:
     """
     Clase para llevar a cabo tareas de limpieza en un DataFrame de pandas.
 
@@ -112,7 +121,7 @@ class DataCleaner:
         """
         self.df = self.df.loc[:, selected_variables]
 
-    def primary_filter(self) -> None:
+    def get_filter_data(self) -> None:
         """
         Seleccion de casos que van a entrar en el analisis estadistico
 
@@ -129,116 +138,7 @@ class DataCleaner:
             & (self.df['Lesion fue Intencional'] == 'Si')
             & (self.df['Tuvo intencion de Morir'].isin(['Si', 'No']))
         ]
-
-    def drop_missing(self, how: str = "any", subset: Optional[List[str]] = None) -> None:
-        """
-        Elimina filas con valores nulos según el criterio especificado.
-
-        Args:
-            how (str): 'any' (default) para eliminar filas si al menos
-                       un valor es nulo, o 'all' para eliminar filas
-                       solo si todos los valores están nulos.
-            subset (List[str] | None): Lista de columnas a considerar.
-                                       Si es None, aplica a todas.
-
-        Ejemplo:
-            cleaner.drop_missing(how="all", subset=["edad_paciente", "sexo_paciente"])
-        """
-        self.df.dropna(how=how, subset=subset, inplace=True)
-
-    def fill_missing(self, columns: List[str], value: Union[str, int, float]) -> None:
-        """
-        Rellena valores nulos en columnas específicas con un valor dado.
-
-        Args:
-            columns (List[str]): Lista de columnas donde se rellenarán nulos.
-            value (str | int | float): Valor con el que se reemplazarán los nulos.
-
-        Ejemplo:
-            cleaner.fill_missing(["edad_paciente"], value=0)
-        """
-        for col in columns:
-            self.df[col].fillna(value, inplace=True)
-
-    def remove_outliers_iqr(self, column: str, factor: float = 1.5) -> None:
-        """
-        Elimina outliers en una columna numérica según el método de rango intercuartil (IQR).
-
-        Args:
-            column (str): Nombre de la columna donde se quieren eliminar outliers.
-            factor (float): Factor para multiplicar el IQR.
-                            1.5 es el valor tradicional,
-                            aunque 3.0 se utiliza para detectar outliers más extremos.
-
-        Ejemplo:
-            cleaner.remove_outliers_iqr("edad_paciente", factor=1.5)
-        """
-        if column not in self.df.columns:
-            raise ValueError(f"La columna '{column}' no existe en el DataFrame.")
-
-        q1 = self.df[column].quantile(0.25)
-        q3 = self.df[column].quantile(0.75)
-        iqr = q3 - q1
-        lower_bound = q1 - (factor * iqr)
-        upper_bound = q3 + (factor * iqr)
-
-        before_count = len(self.df)
-        self.df = self.df[
-            (self.df[column] >= lower_bound) &
-            (self.df[column] <= upper_bound)
-            ]
-        after_count = len(self.df)
-        print(f"Eliminados {before_count - after_count} outliers en '{column}' (IQR).")
-
-    def remove_outliers_zscore(self, column: str, z_threshold: float = 3.0) -> None:
-        """
-        Elimina outliers en una columna numérica usando el método de puntaje Z (Z-score).
-
-        Args:
-            column (str): Nombre de la columna donde se quieren eliminar outliers.
-            z_threshold (float): Umbral de Z-score. Por defecto 3.0 (3 desviaciones estándar).
-
-        Ejemplo:
-            cleaner.remove_outliers_zscore("edad_paciente", z_threshold=3.0)
-        """
-        if column not in self.df.columns:
-            raise ValueError(f"La columna '{column}' no existe en el DataFrame.")
-
-        col_mean = self.df[column].mean()
-        col_std = self.df[column].std()
-
-        # Evitar división por cero si la desviación estándar es 0
-        if col_std == 0:
-            print(f"No se pueden detectar outliers con Z-score en '{column}' porque la desviación estándar es 0.")
-            return
-
-        before_count = len(self.df)
-        z_scores = (self.df[column] - col_mean) / col_std
-        self.df = self.df[abs(z_scores) <= z_threshold]
-        after_count = len(self.df)
-        print(f"Eliminados {before_count - after_count} outliers en '{column}' (Z-score).")
-
-    def rename_columns(self, columns_mapping: dict) -> None:
-        """
-        Renombra columnas según un diccionario de mapeo.
-
-        Args:
-            columns_mapping (dict): {nombre_actual: nombre_nuevo}.
-
-        Ejemplo:
-            cleaner.rename_columns({"fecha_del_evento": "fecha_evento"})
-        """
-        self.df.rename(columns=columns_mapping, inplace=True)
-
-    def get_clean_data(self) -> pd.DataFrame:
-        """
-        Retorna el DataFrame limpio (procesado hasta el momento).
-
-        Returns:
-            pd.DataFrame: DataFrame ya limpio según las transformaciones aplicadas.
-        """
-        return self.df
-
+ 
 
 class DateCleaner:
     """" 
@@ -406,6 +306,17 @@ class DateCleaner:
                 'data/logs/incoherence_date_2.xlsx', sheet_name='Fechas imputadas'
             )
 
+    def get_clean_date(self) -> pd.DataFrame:
+        """
+        Devuelve el DataFrame limpio después de aplicar todos los métodos de limpieza.
+        """
+        # Aplicar metodos de limpieza de la clase
+        self.review_format()
+        self.review_nat()
+        self.review_coherence
+
+        return self.df
+
 
 class IntegerCleaner:
     """
@@ -550,19 +461,35 @@ class IntegerCleaner:
                 sheet_name='Edad Paciente Eliminada'
             )
 
+    def get_clean_integer(self) -> pd.DataFrame:
+        """
+        Devuelve el DataFrame limpio después de aplicar todos los métodos de limpieza.
+        """
+        # Aplicar metodos de limpieza de la clase
+        self.semana_epidemiologica()
+        self.edad_paciente()
+
+        return self.df
+
+
 class DuplicateCleaner():
     """
     Clase para buscar y eliminar duplicados.
     Usará los campos:
-        - Identificacion Paciente
         - ID/RUT Paciente
         - Nombre Paciente
         - Apellido Paterno Paciente
         - Apellido Materno Paciente
-        - Región
         - Comuna
         - Establecimiento de Salud
-    """
+        - Fecha del evento
+        - Fecha de nacimiento del paciente
+
+    Se entiende que si los nombres normalizados, los RUTs o IDs,  las fechas de nacimiento, 
+     las fechas del evento son iguales y la comuna donde ocurre el evento son iguales; entonces se trata del mismo paciente.
+
+     Existe la posibilidad de tener campos que esten vacios o sean ligeramente diferentes por lo 
+     que quiero considerar un umbral de igualdad del 90%"""
 
     def __init__(self, df: pd.DataFrame) -> None:
         self.df = df
@@ -572,8 +499,10 @@ class DuplicateCleaner():
             "Apellido Paterno Paciente",
             "Apellido Materno Paciente"
         ]
+        self.duplicate_groups = []  # Grupos de duplicados encontrados
+        self.log_duplicados = []
 
-    def data_normalization(self) -> None:
+    def name_normalization(self) -> None:
         """
         Normaliza los datos de las columnas de texto en el DataFrame que se usarán para detectar duplicados.
         Convierte a minúsculas, elimina tildes y espacios extra.
@@ -601,71 +530,172 @@ class DuplicateCleaner():
         Prepara el rut, pasaporte e identicacion local para la busqueda de duplicados
         1. Todos los registros donde la identificación es RUN y contiene guión, se separa en RUN y DV no se guarda
             1.1. Limpiar los registros anteriores de caracteres no numéricos 
-            1.2 Calculo el DV para todos los registros anteriores  
+            1.2 Calulo el DV para todos los registros anteriores  
 
         2. Pensar de que hacer con los registros que no son RUN
         """
-        # Split RUN/RUT
+        # Normalizar los RUN/RUT y calcular el dígito verificador
         rut_mask = (
             self.df['Identificacion Paciente'] == 'RUN'
-            ) & (self.df['ID/RUT Paciente'].str.contains('-'))
+        ) & (self.df['ID/RUT Paciente'].str.contains('-'))
 
         if rut_mask.any():
-            self.df.loc[rut_mask, 'ID/RUT Paciente'] = self.df.loc[rut_mask, 'ID/RUT Paciente'].str.split(
-                '-', expand=False
-            )[0]
-            self.df.loc[rut_mask, 'ID/RUT Paciente'] = self.df.loc[rut_mask, 'ID/RUT Paciente'].str.replace(
-            '[^0-9]', '', regex=True
-            )
-            self.df.loc[rut_mask, 'dv'] = self.df.loc[rut_mask, 'ID/RUT Paciente'].apply(
-                lambda x: int(x[-1]) if x[-1].isdigit() else None
-            )
+            # Dividir el RUT en número base y dígito verificador original
+            split_rut = self.df.loc[rut_mask, 'ID/RUT Paciente'].str.split('-', expand=True)
+            self.df.loc[rut_mask, 'id_rut_id_base'] = split_rut[0]  # Rut base
+            self.df.loc[rut_mask, 'dv_original'] = split_rut[1]  # DV original
 
+            # Limpiar el número base (eliminar caracteres no numéricos)
+            self.df.loc[rut_mask, 'id_rut_id_base'] = self.df.loc[rut_mask, 'id_rut_id_base'].str.replace(
+                '[^0-9]', '', regex=True
+            ).str.strip()  # Elimina espacios en blanco antes y después
 
-        if self.df['Identificacion Paciente'].str.contains('-').any():
-            self.df[['RUN/ID Paciente', 'dv']] = self.df['Identificacion Paciente'].str.split(
-                '-', expand=False)
-
-
-        # Solo números
-        self.df['RUN/ID Paciente'] = self.df['RUN/ID Paciente'].str.replace(
-            '[^0-9]', '', regex=True
+            self.df.loc[rut_mask, 'id_rut_id_base'] = self.df.loc[rut_mask, 'id_rut_id_base'].apply(
+                lambda x: int(x) if x.isdigit() else None
             )
 
-        if 'ID/RUT Paciente' in self.df.columns:
-            self.df['dv'] = self.df['ID/RUT Paciente'].apply(
-                lambda x: int(x[-1]) if x[-1].isdigit() else None
+            # Calcular el dígito verificador
+            self.df.loc[rut_mask, 'dv_calculado'] = self.df.loc[rut_mask, 'id_rut_id_base'].apply(
+                lambda x: digito_verificador(x)
             )
 
+        # Normalizar otros tipos de identificación
+        mask_others_ids = self.df['Identificacion Paciente'] != 'RUN'
 
-    def find_duplicates(self, keep: str = "first") -> pd.DataFrame:
+        if mask_others_ids.any():
+            self.df.loc[mask_others_ids, 'id_rut_id_base'] = self.df.loc[mask_others_ids, 'ID/RUT Paciente'].str.replace(
+                '[^0-9]', '', regex=True
+            ).str.strip()  # Elimina espacios en blanco antes y después
+
+            # Convertir a entero, manejando valores vacíos
+            self.df.loc[mask_others_ids, 'id_rut_id_base'] = self.df.loc[mask_others_ids, 'id_rut_id_base'].apply(
+                lambda x: int(x) if x.isdigit() else None
+            )
+
+    def find_duplicates(self, similarity_threshold=90):
         """
-        Detecta y elimina duplicados basándose en las columnas definidas.
-
-        Args:
-            keep (str): Define qué duplicado conservar. Puede ser 'first', 'last' o False para eliminar todos.
-
-        Returns:
-            pd.DataFrame: DataFrame sin duplicados.
+        Encuentra duplicados en el DataFrame considerando un umbral de similitud.
+        Devuelve un DataFrame con los registros marcados como duplicados.
         """
-        if not all(col in self.df.columns for col in self.duplicate_columns):
-            raise ValueError("No todas las columnas necesarias están presentes en el DataFrame.")
 
-        # Detectar duplicados
-        duplicates = self.df.duplicated(subset=self.duplicate_columns, keep=keep)
-        print(f"Se encontraron {duplicates.sum()} duplicados.")
+        # Normalizar previamente nombres e identificaciones
+        self.name_normalization()
+        self.run_id_normalization()
 
-        # Eliminar duplicados
-        self.df = self.df[~duplicates]
+        # Crear columna combinada de comparación
+        self.df['compare_key'] = (
+            self.df['id_rut_id_base'].astype(str).fillna('') +
+            self.df['nombre_completo'] +
+            pd.to_datetime(self.df['Fecha de nacimiento del paciente'], errors='coerce').astype(str) +
+            pd.to_datetime(self.df['Fecha del evento'], errors='coerce').astype(str) +
+            self.df['Comuna'].fillna('').str.lower()
+        )
 
-    def get_cleaned_data(self) -> pd.DataFrame:
+        # DataFrame para resultados
+        duplicates = []
+        checked_indices = set()
+        
+
+        # Iterar sobre cada fila del DataFrame
+        for idx, row in self.df.iterrows():
+            if idx in checked_indices:
+                continue
+
+            current_key = row['compare_key']
+            current_group = [idx]
+
+            for idx2, row2 in self.df.loc[idx+1:].iterrows():
+                if idx2 in checked_indices:
+                    continue
+
+                compare_key = row2['compare_key']
+
+                # Calcular similitud usando fuzzywuzzy
+                similarity = fuzz.ratio(current_key, compare_key)
+
+                if similarity >= similarity_threshold:
+                    current_group.append(idx2)
+                    checked_indices.add(idx2)
+
+            if len(current_group) > 1:
+                duplicates.extend(current_group)
+                self.duplicate_groups.append(current_group)  # Guarda los grupos aquí
+                self.log_duplicados.append(self.df.loc[current_group, [
+                    'ID/RUT Paciente', 
+                    'Nombre Paciente', 
+                    'Apellido Paterno Paciente',
+                    'Apellido Materno Paciente', 
+                    'Fecha de nacimiento del paciente',
+                    'Fecha del evento', 
+                    'Comuna', 
+                    'Establecimiento de Salud']])
+
+        # Marcar duplicados en el DataFrame original
+        self.df['es_duplicado'] = False
+        self.df.loc[duplicates, 'es_duplicado'] = True
+
+
+        # Logs de los duplicados detectados
+        self.df.loc[duplicates, 'compare_key'].to_excel('data/logs/duplicados.xlsx', index=False) # mi forma
+        
+        # GPT style
+        with open('log_duplicados.txt', 'w', encoding='utf-8') as log:
+            for i, grupo in enumerate(self.log_duplicados, start=1):
+                log.write(f"\n{'-'*20} Grupo duplicado {i} {'-'*20}\n")
+                log.write(grupo.to_string(index=True))
+                log.write("\n")
+
+        return self.df[self.df['es_duplicado']]
+
+    def keep_best_record(self):
         """
-        Retorna el DataFrame limpio después de eliminar duplicados.
-
-        Returns:
-            pd.DataFrame: DataFrame sin duplicados.
+        Conserva solo el mejor registro entre los duplicados basado en la completitud de datos.
+        Genera log de registros descartados y elimina estos registros del DataFrame.
         """
+        indices_to_drop = []
+        log_descartados = []
+
+        for group_indices in self.duplicate_groups:
+            group_df = self.df.loc[group_indices]
+            completeness = group_df.notna().sum(axis=1)
+            best_index = completeness.idxmax()
+            drop_indices = group_df.index.difference([best_index])
+            indices_to_drop.extend(drop_indices)
+            log_descartados.append(self.df.loc[drop_indices, [
+                'ID/RUT Paciente', 'Nombre Paciente', 'Apellido Paterno Paciente',
+                'Apellido Materno Paciente', 'Fecha de nacimiento del paciente',
+                'Fecha del evento', 'Comuna', 'Establecimiento de Salud'
+            ]])
+
+        # Generar log de registros descartados
+        with open('log_registros_descartados.txt', 'w', encoding='utf-8') as log:
+            for i, grupo in enumerate(log_descartados, start=1):
+                log.write(f"\n{'-'*20} Registros descartados del grupo {i} {'-'*20}\n")
+                log.write(grupo.to_string(index=True))
+                log.write("\n")
+
+        # Eliminar registros descartados
+        self.df = self.df.drop(indices_to_drop).reset_index(drop=True)
+
         return self.df
+    
+    def get_clean_duplicates(self) -> pd.DataFrame:
+        """
+        Devuelve el DataFrame limpio después de aplicar todos los métodos de limpieza.
+        """
+        # Aplicar metodos de limpieza de la clase
+        self.find_duplicates()
+        self.keep_best_record()
+
+        return self.df
+
+
+class CategoricalCleaner():
+
+    def __init__(self, df: pd.DataFrame) -> None:
+        self.df = df
+
+    # TODO: Implementar el método para otra iteracion del proyecto 
 
 
 class ApplyCleaners():
@@ -687,4 +717,21 @@ class ApplyCleaners():
             pd.DataFrame: El DataFrame limpio.
         """
 
-        pass
+        self.filter_data = FilterData(df)
+        self.filter_data.select_variables(self.filter_data.selected_variables)
+        self.filter_data.get_filter_data()
+
+        self.date_cleaner = DateCleaner(self.filter_data.df)
+        self.date_cleaner.get_clean_date()
+
+        self.integer_cleaner = IntegerCleaner(self.date_cleaner.df)
+        self.integer_cleaner.get_clean_integer()
+
+        self.duplicate_cleaner = DuplicateCleaner(self.integer_cleaner.df)
+        self.duplicate_cleaner.get_clean_duplicates()
+
+        # self.categorical_cleaner = CategoricalCleaner(self.duplicate_cleaner.df)
+        # self.categorical_cleaner.get_clean_categorical()
+
+        return self.duplicate_cleaner.df
+    
