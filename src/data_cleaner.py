@@ -112,7 +112,7 @@ class FilterData:
             "Derivacion detalle"
         ]
 
-    def select_variables(self, selected_variables: List[str]) -> None:
+    def filter_columns(self, selected_variables: List[str]) -> None:
         """
         Selecciona las variables ya predefinidas que se requieren en el analisis.
 
