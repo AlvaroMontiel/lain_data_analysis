@@ -1,7 +1,11 @@
 import streamlit as st
 import pandas as pd
 from src.data_loader import DataLoader
-from src.data_cleaner import ApplyCleaners
+from src.data_cleaner import FilterData
+from src.data_cleaner import IntegerCleaner
+from src.data_cleaner import DateCleaner
+from src.data_cleaner import DuplicateCleaner
+# from src.data_cleaner import ApplyCleaners
 import plotly.express as px
 
 # Formato de la página
@@ -38,8 +42,36 @@ df_raw = loader.load_data()
 # ApplyCleaners on raw dataframe
 # Aplicar limpieza de datos al DataFrame crudo
 # ------------------------------------------------------------- 
-cleaner = ApplyCleaners(df_raw)
-df_clean = cleaner.apply_cleaners()
+st.markdown("## Limpieza de datos en proceso")
+progress_text = st.empty()
+progress_bar = st.progress(0)
+
+with st.spinner("Iniciando limpieza de datos..."):
+    # Etapa 1: Filtrar datos
+    progress_text.text("Filtrando datos...")
+    clean_data = FilterData(df_raw)
+    df_clean = clean_data.get_filter_data()    
+    progress_bar.progress(25)
+    
+    # Etapa 2: Limpiar columnas de fecha
+    progress_text.text("Limpiando columnas de fecha...")
+    clean_data = DateCleaner(df_clean)
+    df_clean = clean_data.get_date_cleaned_data()
+    progress_bar.progress(50)
+    
+    # Etapa 3: Limpiar columnas numéricas y de identificación
+    progress_text.text("Limpiando columnas numéricas y de identificación...")
+    clean_data = IntegerCleaner(df_clean)
+    df_clean = clean_data.get_integer_cleaned_data()
+    progress_bar.progress(75)
+    
+    # Etapa 4: Eliminar duplicados y ajustes finales
+    progress_text.text("Eliminando duplicados y finalizando ajustes...")
+    clean_data = DuplicateCleaner(df_clean)
+    df_clean = clean_data.get_duplicate_cleaned_data()
+    progress_bar.progress(100)
+    
+    progress_text.text("Limpieza completada!")
 
 # -------------------------------------------------------------
 # Data Analysis and Visualization
@@ -48,7 +80,8 @@ df_clean = cleaner.apply_cleaners()
 try:
     # Obtener los valores únicos para cada filtro
     df_clean["Fecha del evento"] = pd.to_datetime(df_clean["Fecha del evento"], errors='coerce')
-    years = sorted(df_clean["Fecha del evento"].dt.year.unique()) if "Fecha del evento" in df_clean.columns else []
+    years = sorted(
+        df_clean["Fecha del evento"].dt.year.dropna().unique()) if "Fecha del evento" in df_clean.columns else []
     regions = sorted(df_clean["Region"].unique()) if "Region" in df_clean.columns else []
     communes = sorted(df_clean["Comuna"].unique()) if "Comuna" in df_clean.columns else []
     establecimientos = sorted(df_clean["Establecimiento Salud"].unique()) if "Establecimiento Salud" in df_clean.columns else []
@@ -80,7 +113,8 @@ except Exception as e:
 # Aplicar filtros al DataFrame
 df_filtered = df_clean.copy()
 if "Fecha del evento" in df_filtered.columns and selected_years:
-    df_filtered = df_filtered[df_filtered["Fecha del evento"].isin(selected_years)]
+    df_filtered["Fecha del evento"] = pd.to_datetime(df_filtered["Fecha del evento"], errors="coerce")
+    df_filtered = df_filtered[df_filtered["Fecha del evento"].dt.year.isin(selected_years)]
 if "Region" in df_filtered.columns and selected_regions:
     df_filtered = df_filtered[df_filtered["Region"].isin(selected_regions)]
 if "Comuna" in df_filtered.columns and selected_communes:
