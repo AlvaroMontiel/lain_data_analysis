@@ -9,6 +9,7 @@ from epiweeks import Week # type: ignore
 from datetime import date
 from itertools import cycle
 from fuzzywuzzy import fuzz
+import streamlit as st
 
 
 def parse_with_multiple_formats(date_str: str, possible_formats: list) -> pd.Timestamp:
@@ -718,12 +719,11 @@ class DuplicateCleaner():
 
         if mask_others_ids.any():
             self.df.loc[mask_others_ids, 'id_rut_id_base'] = self.df.loc[mask_others_ids, 'ID/RUT Paciente'].str.replace(
-                '[^0-9]', '', regex=True
-            ).str.strip()  # Elimina espacios en blanco antes y después
+                '[^0-9]', '', regex=True).str.strip()  # Elimina espacios en blanco antes y después
 
             # Convertir a entero, manejando valores vacíos
             self.df.loc[mask_others_ids, 'id_rut_id_base'] = self.df.loc[mask_others_ids, 'id_rut_id_base'].apply(
-                lambda x: int(x) if x.isdigit() else None
+                lambda x: int(x) if (isinstance(x, str) and x.isdigit()) or (isinstance(x, float) and not pd.isna(x)) else None
             )
 
     def find_duplicates(self, similarity_threshold=90) -> pd.DataFrame:
@@ -752,13 +752,13 @@ class DuplicateCleaner():
 
         # Normalizar previamente nombres e identificaciones
         self.name_normalization()
-        self.run_id_normalization()
+        self.normalize_identifications_ids()
 
         # Crear columna combinada de comparación
         self.df['compare_key'] = (
             self.df['id_rut_id_base'].astype(str).fillna('') +
             self.df['nombre_completo'] +
-            pd.to_datetime(self.df['Fecha de nacimiento del paciente'], errors='coerce').astype(str) +
+            pd.to_datetime(self.df['Fecha Nacimiento Paciente'], errors='coerce').astype(str) +
             pd.to_datetime(self.df['Fecha del evento'], errors='coerce').astype(str) +
             self.df['Comuna'].fillna('').str.lower()
         )
@@ -797,10 +797,10 @@ class DuplicateCleaner():
                     'Nombre Paciente', 
                     'Apellido Paterno Paciente',
                     'Apellido Materno Paciente', 
-                    'Fecha de nacimiento del paciente',
+                    'Fecha Nacimiento Paciente',
                     'Fecha del evento', 
                     'Comuna', 
-                    'Establecimiento de Salud']])
+                    'Establecimiento Salud']])
 
         # Marcar duplicados en el DataFrame original
         self.df['es_duplicado'] = False
@@ -850,8 +850,8 @@ class DuplicateCleaner():
             indices_to_drop.extend(drop_indices)
             log_descartados.append(self.df.loc[drop_indices, [
                 'ID/RUT Paciente', 'Nombre Paciente', 'Apellido Paterno Paciente',
-                'Apellido Materno Paciente', 'Fecha de nacimiento del paciente',
-                'Fecha del evento', 'Comuna', 'Establecimiento de Salud'
+                'Apellido Materno Paciente', 'Fecha Nacimiento Paciente',
+                'Fecha del evento', 'Comuna', 'Establecimiento Salud'
             ]])
 
         # Generar log de registros descartados
@@ -916,7 +916,8 @@ class ApplyCleaners():
     def __init__(self, df: pd.DataFrame) -> None:
         self.df = df
 
-    def apply_cleaners(self, df: pd.DataFrame) -> pd.DataFrame:
+    @st.cache_data
+    def apply_cleaners(_self) -> pd.DataFrame:
         """
         Apply all data cleaners to a DataFrame sequentially.
 
@@ -926,28 +927,25 @@ class ApplyCleaners():
         3. Cleaning integer columns
         4. Removing duplicates
 
-        Args:
-            df (pd.DataFrame): The DataFrame to be cleaned.
-
         Returns:
             pd.DataFrame: The cleaned DataFrame after applying all cleaning operations.
         """
 
-        self.filter_data = FilterData(df)
-        self.filter_data.filter_columns(self.filter_data.selected_variables)
-        self.filter_data.get_filter_data()
+        _self.filter_data = FilterData(_self.df)
+        _self.filter_data.filter_columns(_self.filter_data.selected_variables)
+        _self.filter_data.get_filter_data()
 
-        self.date_cleaner = DateCleaner(self.filter_data.df)
-        self.date_cleaner.get_clean_date()
+        _self.date_cleaner = DateCleaner(_self.filter_data.df)
+        _self.date_cleaner.get_clean_date()
 
-        self.integer_cleaner = IntegerCleaner(self.date_cleaner.df)
-        self.integer_cleaner.get_clean_integer()
+        _self.integer_cleaner = IntegerCleaner(_self.date_cleaner.df)
+        _self.integer_cleaner.get_clean_integer()
 
-        self.duplicate_cleaner = DuplicateCleaner(self.integer_cleaner.df)
-        self.duplicate_cleaner.get_clean_duplicates()
+        _self.duplicate_cleaner = DuplicateCleaner(_self.integer_cleaner.df)
+        _self.duplicate_cleaner.get_clean_duplicates()
 
-        # self.categorical_cleaner = CategoricalCleaner(self.duplicate_cleaner.df)
-        # self.categorical_cleaner.get_clean_categorical()
+        # _self.categorical_cleaner = CategoricalCleaner(_self.duplicate_cleaner.df)
+        # _self.categorical_cleaner.get_clean_categorical()
 
-        return self.duplicate_cleaner.df
+        return _self.df
     
