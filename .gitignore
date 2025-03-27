@@ -13,3 +13,5 @@ log_duplicados.txt
 src/__pycache__/data_cleaner.cpython-310.pyc
 src/__pycache__/data_loader.cpython-310.pyc
 src/__pycache__/__init__.cpython-310.pyc
+src/__pycache__/data_cleaner.cpython-310.pyc
+src/__pycache__/data_loader.cpython-310.pyc
