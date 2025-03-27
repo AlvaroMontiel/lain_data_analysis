@@ -33,7 +33,8 @@ class DataLoader:
         self.file_path = file_path
         self.sheet_name = sheet_name
 
-    def load_data(self) -> pd.DataFrame:
+    @st.cache_data # Decorador para cachear los datos 
+    def load_data(_self) -> pd.DataFrame:
         """
         Carga los datos en función de la extensión del archivo.
         - Si es .xlsx o .xls, intentará leer como Excel.
@@ -48,24 +49,24 @@ class DataLoader:
             Exception: Para errores inesperados de lectura.
         """
         # Verificar que el archivo existe
-        if not os.path.isfile(self.file_path):
-            raise FileNotFoundError(f"No se encontró el archivo: {self.file_path}")
+        if not os.path.isfile(_self.file_path):
+            raise FileNotFoundError(f"No se encontró el archivo: {_self.file_path}")
 
         # Obtener la extensión del archivo
-        extension = os.path.splitext(self.file_path)[1].lower()
+        extension = os.path.splitext(_self.file_path)[1].lower()
 
         try:
             if extension in [".xls", ".xlsx"]:
                 # Leer archivo Excel
-                return self._load_excel()
+                return _self._load_excel()
             elif extension == ".csv":
                 # Leer archivo CSV
-                return self._load_csv()
+                return _self._load_csv()
             else:
                 raise ValueError(f"Extensión de archivo no soportada: {extension}")
         except Exception as e:
             # Podrías capturar errores más específicos o realizar logs
-            raise Exception(f"Error al leer el archivo {self.file_path}: {e}")
+            raise Exception(f"Error al leer el archivo {_self.file_path}: {e}")
 
     def _load_excel(self) -> pd.DataFrame:
         """
