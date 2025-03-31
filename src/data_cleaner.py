@@ -8,8 +8,8 @@ from typing import List, Optional, Union
 from epiweeks import Week # type: ignore
 from datetime import date
 from itertools import cycle
-from fuzzywuzzy import fuzz
-import streamlit as st
+from fuzzywuzzy import fuzz # type: ignore
+import streamlit as st # type: ignore
 
 
 def parse_with_multiple_formats(date_str: str, possible_formats: list) -> pd.Timestamp:
@@ -140,23 +140,38 @@ class FilterData:
         """
         self.df = self.df.loc[:, selected_variables]
 
-    def get_filter_data(self) -> None:
+    @st.cache_data
+    def get_filter_data(_self) -> pd.DataFrame:
         """
-        Selection of cases to be included in the statistical analysis.
+        Filters the DataFrame to include only the rows that match specific criteria.
 
-        Args:
-            None
+        The method applies a series of conditions to the DataFrame to filter it down
+        to rows that meet the following requirements:
+        - 'Origen Caso' is either 'Notificación LAIN' or 'Notificación física'.
+        - 'Tipo de Caso' is 'Cerrado'.
+        - 'Estado' is 'Finalizado'.
+        - 'Clasificacion' is 'Confirmado LAIN'.
+        - 'Subclasificacion' is either 'Con intención suicida' or 'Sin intención suicida'.
+        - 'Lesion fue Autoinfligida' is 'Si'.
+        - 'Lesion fue Intencional' is 'Si'.
+        - 'Tuvo intencion de Morir' is either 'Si' or 'No'.
+
+        Returns:
+            pd.DataFrame: A filtered DataFrame containing only the rows that meet
+            the specified criteria.
         """
-        self.df = self.df[
-            (self.df['Origen Caso'].isin(['Notificación LAIN', 'Notificación física']))
-            & (self.df['Tipo de Caso'] == 'Cerrado')
-            & (self.df['Estado'] == 'Finalizado')
-            & (self.df['Clasificacion'] == 'Confirmado LAIN')
-            & (self.df['Subclasificacion'].isin(['Con intención suicida', 'Sin intención suicida']))
-            & (self.df['Lesion fue Autoinfligida'] == 'Si')
-            & (self.df['Lesion fue Intencional'] == 'Si')
-            & (self.df['Tuvo intencion de Morir'].isin(['Si', 'No']))
+        
+        _self.df = _self.df[
+            (_self.df['Origen Caso'].isin(['Notificación LAIN', 'Notificación física']))
+            & (_self.df['Tipo de Caso'] == 'Cerrado')
+            & (_self.df['Estado'] == 'Finalizado')
+            & (_self.df['Clasificacion'] == 'Confirmado LAIN')
+            & (_self.df['Subclasificacion'].isin(['Con intención suicida', 'Sin intención suicida']))
+            & (_self.df['Lesion fue Autoinfligida'] == 'Si')
+            & (_self.df['Lesion fue Intencional'] == 'Si')
+            & (_self.df['Tuvo intencion de Morir'].isin(['Si', 'No']))
         ]
+        return _self.df
  
 
 class DateCleaner:
@@ -397,7 +412,8 @@ class DateCleaner:
                 'data/logs/incoherence_date_2.xlsx', sheet_name='Fechas imputadas'
             )
 
-    def get_clean_date(self) -> pd.DataFrame:
+    @st.cache_data
+    def get_clean_date(_self) -> pd.DataFrame:
         """
         This method processes the DataFrame by applying sequential cleaning operations:
         1. Reviews format issues in dates
@@ -411,11 +427,11 @@ class DateCleaner:
         """
 
         # Aplicar metodos de limpieza de la clase
-        self.review_format()
-        self.review_nat()
-        self.review_coherence()
+        _self.review_format()
+        _self.review_nat()
+        _self.review_coherence()
 
-        return self.df
+        return _self.df
 
 
 class IntegerCleaner:
@@ -570,7 +586,8 @@ class IntegerCleaner:
                 sheet_name='Edad Paciente Eliminada'
             )
 
-    def get_clean_integer(self) -> pd.DataFrame:
+    @st.cache_data
+    def get_clean_integer(_self) -> pd.DataFrame:
         """
         Returns the cleaned DataFrame after applying all cleaning methods.
 
@@ -585,10 +602,10 @@ class IntegerCleaner:
             The cleaned DataFrame with all cleaning transformations applied
         """
         # Aplicar metodos de limpieza de la clase
-        self.semana_epidemiologica()
-        self.edad_paciente()
+        _self.semana_epidemiologica()
+        _self.edad_paciente()
 
-        return self.df
+        return _self.df
 
 
 class DuplicateCleaner():
@@ -866,7 +883,8 @@ class DuplicateCleaner():
 
         return self.df
     
-    def get_clean_duplicates(self) -> pd.DataFrame:
+    @st.cache_data
+    def get_clean_duplicates(_self) -> pd.DataFrame:
         """
         This method applies cleaning methods of the class to handle duplicates:
         1. Finds duplicate records using find_duplicates()
@@ -879,10 +897,10 @@ class DuplicateCleaner():
         """
         
         # Aplicar metodos de limpieza de la clase
-        self.find_duplicates()
-        self.keep_best_record()
+        _self.find_duplicates()
+        _self.keep_best_record()
 
-        return self.df
+        return _self.df
 
 
 class CategoricalCleaner():
