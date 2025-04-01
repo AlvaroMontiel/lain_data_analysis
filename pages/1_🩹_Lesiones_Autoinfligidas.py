@@ -77,10 +77,10 @@ with st.spinner("Iniciando limpieza de datos..."):
     progress_bar.progress(100)
     
     # Etapa 4: Eliminar duplicados y ajustes finales
-    # progress_text.text("Eliminando duplicados y finalizando ajustes...")
-    # clean_data = DuplicateCleaner(df_clean)
-    # df_clean = clean_data.get_clean_duplicates()
-    # progress_bar.progress(100)
+    progress_text.text("Eliminando duplicados y finalizando ajustes...")
+    clean_data = DuplicateCleaner(df_clean)
+    df_clean = clean_data.get_clean_duplicates()
+    progress_bar.progress(100)
     
     progress_text.text("Limpieza completada!")
 
