@@ -5,6 +5,8 @@ st.set_page_config(
     page_icon="👋",
 )
 
+st.sidebar.image("/home/alvaro/PycharmProjects/lain_data_analysis/assets/logo.png", width=200)
+
 st.write("# Bienvenido a la aplicación de vigilancia epidemiológica 👋")
 st.write("Esta herramienta está diseñada para visualizar datos relacionados con "
         "lesiones autoinfligidas y muertes por suicidio.")
@@ -25,3 +27,13 @@ st.markdown(
     Utiliza el menú lateral para navegar entre las diferentes secciones y explorar los datos.
     """
 )
+
+st.markdown(
+    """
+    <footer style="text-align: center; font-size: 16px; padding: 10px; margin-top: 50px; border-top: 1px solid #ccc;">
+       <strong>Unidad de vigilancia epidemiológica de enfermedades no transmisibles, cáncer y ambiente</strong>
+    </footer>
+    """,
+    unsafe_allow_html=True
+)
+
