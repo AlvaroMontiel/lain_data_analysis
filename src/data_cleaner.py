@@ -8,8 +8,7 @@ from typing import List, Optional, Union
 from epiweeks import Week # type: ignore
 from datetime import date
 from itertools import cycle
-from fuzzywuzzy import fuzz # type: ignore
-import streamlit as st # type: ignore
+from fuzzywuzzy import fuzz
 
 
 def parse_with_multiple_formats(date_str: str, possible_formats: list) -> pd.Timestamp:
@@ -140,38 +139,20 @@ class FilterData:
         """
         self.df = self.df.loc[:, selected_variables]
 
-    @st.cache_data
-    def get_filter_data(_self) -> pd.DataFrame:
-        """
-        Filters the DataFrame to include only the rows that match specific criteria.
-
-        The method applies a series of conditions to the DataFrame to filter it down
-        to rows that meet the following requirements:
-        - 'Origen Caso' is either 'Notificación LAIN' or 'Notificación física'.
-        - 'Tipo de Caso' is 'Cerrado'.
-        - 'Estado' is 'Finalizado'.
-        - 'Clasificacion' is 'Confirmado LAIN'.
-        - 'Subclasificacion' is either 'Con intención suicida' or 'Sin intención suicida'.
-        - 'Lesion fue Autoinfligida' is 'Si'.
-        - 'Lesion fue Intencional' is 'Si'.
-        - 'Tuvo intencion de Morir' is either 'Si' or 'No'.
-
-        Returns:
-            pd.DataFrame: A filtered DataFrame containing only the rows that meet
-            the specified criteria.
-        """
-        
-        _self.df = _self.df[
-            (_self.df['Origen Caso'].isin(['Notificación LAIN', 'Notificación física']))
-            & (_self.df['Tipo de Caso'] == 'Cerrado')
-            & (_self.df['Estado'] == 'Finalizado')
-            & (_self.df['Clasificacion'] == 'Confirmado LAIN')
-            & (_self.df['Subclasificacion'].isin(['Con intención suicida', 'Sin intención suicida']))
-            & (_self.df['Lesion fue Autoinfligida'] == 'Si')
-            & (_self.df['Lesion fue Intencional'] == 'Si')
-            & (_self.df['Tuvo intencion de Morir'].isin(['Si', 'No']))
+    def get_filter_data(self) -> pd.DataFrame:
+        self.df = self.df[
+            (self.df['Origen Caso'].isin(['Notificación LAIN', 'Notificación física']))
+            & (self.df['Tipo de Caso'] == 'Cerrado')
+            & (self.df['Estado'] == 'Finalizado')
+            & (self.df['Clasificacion'] == 'Confirmado LAIN')
+            & (self.df['Subclasificacion'].isin(['Con intención suicida', 'Sin intención suicida']))
+            & (self.df['Lesion fue Autoinfligida'] == 'Si')
+            & (self.df['Lesion fue Intencional'] == 'Si')
+            & (self.df['Tuvo intencion de Morir'].isin(['Si', 'No']))
         ]
-        return _self.df
+        self.df.to_excel('data/data_cleaned/1_casos_filtrados.xlsx', index=False)
+    
+        return self.df
  
 
 class DateCleaner:
@@ -238,21 +219,21 @@ class DateCleaner:
             lambda x: parse_with_multiple_formats(x, possible_formats) if pd.notnull(x) else pd.NaT
         )
         self.df.loc[self.df['Fecha Atencion Urgencia'].isnull(), self.variables_log].to_excel(
-            "data/logs/fechas_imposibles_atencion_urgencia.xlsx"
+            "data/logs/fechas_con_formatos_imposibles_en_atencion_urgencia.xlsx"
         )
 
         self.df['Fecha del evento'] = self.df['Fecha del evento'].apply(
             lambda x: parse_with_multiple_formats(x, possible_formats) if pd.notnull(x) else pd.NaT
         )
         self.df.loc[self.df['Fecha del evento'].isnull(), self.variables_log].to_excel(
-            "data/logs/fechas_imposibles_evento.xlsx"
+            "data/logs/fechas_con_formatos_imposibles_en_fecha_de_evento.xlsx"
         )
 
         self.df['Fecha Nacimiento Paciente'] = self.df['Fecha Nacimiento Paciente'].apply(
             lambda x: parse_with_multiple_formats(x, possible_formats) if pd.notnull(x) else pd.NaT
         )
         self.df.loc[self.df['Fecha Nacimiento Paciente'].isnull(), self.variables_log].to_excel(
-            "data/logs/fechas_imposibles_nacimiento_paciente.xlsx"
+            "data/logs/fechas_con_formatos_imposibles_en_fecha_nacimiento_paciente.xlsx"
         )
 
     def review_nat (self) -> None:
@@ -286,7 +267,7 @@ class DateCleaner:
             self.df.loc[mask_atencion_nat, 'Fecha Atencion Urgencia'] = self.df.loc[
                 mask_atencion_nat, 'Fecha del evento']
             self.df.loc[mask_atencion_nat, self.variables_log].to_excel(
-                'data/logs/log_fecha_atencion_urgencias_null.xlsx',
+                'data/logs/fecha_de_atencion_urgencias_imputada_con_fecha_del_evento.xlsx',
                 sheet_name='Fecha Atencion Urgencia Imputada'
             )
 
@@ -302,7 +283,7 @@ class DateCleaner:
             median_atencion = self.df['Fecha Atencion Urgencia'].median()
             self.df['Fecha Atencion Urgencia'].fillna(median_atencion, inplace=True)
             self.df.loc[mask_atencion_nat, self.variables_log].to_excel(
-                'data/logs/log_fecha_atencion_urgencias_mediana.xlsx',
+                'data/logs/fecha_atencion_urgencias_imputada_con_la_mediana.xlsx',
                 sheet_name='Fecha Atencion Urgencia Imputada'
             )
 
@@ -315,7 +296,7 @@ class DateCleaner:
             self.df.loc[mask_evento_nat, 'Fecha del evento'] = self.df.loc[
                 mask_evento_nat, 'Fecha Atencion Urgencia']
             self.df.loc[mask_evento_nat, self.variables_log].to_excel(
-                'data/logs/log_fecha_evento_null.xlsx',
+                'data/logs/fecha_evento_imputada_con_fecha_atencion_urgencia.xlsx',
                 sheet_name='Fecha Evento Imputada'
             )
 
@@ -327,7 +308,7 @@ class DateCleaner:
             median_evento = self.df['Fecha del evento'].median()
             self.df['Fecha del evento'].fillna(median_evento, inplace=True)
             self.df.loc[mask_evento_nat, self.variables_log].to_excel(
-                'data/logs/log_fecha_evento_mediana.xlsx',
+                'data/logs/fecha_evento_imputada_con_la_mediana.xlsx',
                 sheet_name='Fecha Evento Imputada'
             )
 
@@ -356,7 +337,7 @@ class DateCleaner:
                             pd.to_timedelta(self.df.loc[mask_puede_inferir, 'Edad Paciente'] * 365, unit='D')
                     )
                     self.df.loc[mask_puede_inferir, self.variables_log].to_excel(
-                        'data/logs/log_fecha_nacimiento_null.xlsx',
+                        'data/logs/fecha_nacimiento_calculada_de_la_edad.xlsx',
                         sheet_name='Fecha Nacimiento Imputada')
 
             # 5.2 Recalcular cuántos NaT quedan en 'Fecha Nacimiento Paciente'
@@ -367,14 +348,14 @@ class DateCleaner:
                 median_nac = self.df['Fecha Nacimiento Paciente'].median()
                 self.df['Fecha Nacimiento Paciente'].fillna(median_nac, inplace=True)
                 self.df.loc[mask_nac_nat, self.variables_log].to_excel(
-                    'data/logs/log_fecha_nacimiento_mediana.xlsx',
+                    'data/logs/fecha_nacimiento_imputada_con_la_mediana.xlsx',
                     sheet_name='Fecha Nacimiento Imputada'
                 )
             elif prop_na_nacimiento >= 0.1:
                 # Caso extremo: se decide eliminar
                 self.df = self.df[self.df['Fecha Nacimiento Paciente'].notnull()]
                 self.df.loc[mask_nac_nat, self.variables_log].to_excel(
-                    'data/logs/log_fecha_nacimiento_eliminadas.xlsx',
+                    'data/logs/fechas_nacimiento_eliminadas.xlsx',
                     sheet_name='Fecha Nacimiento Eliminada'
                 )
 
@@ -399,7 +380,7 @@ class DateCleaner:
         if incoherence_mask.any():
             self.df.loc[incoherence_mask, 'Fecha Atencion Urgencia'] = (self.df.loc[incoherence_mask, 'Fecha del evento'])
             self.df.loc[incoherence_mask, self.variables_log].to_excel(
-                'data/logs/incoherence_date_1.xlsx', sheet_name='Fechas imputadas'
+                'data/logs/fechas_incoherentes_fecha_evento_mayor_fecha_atencion.xlsx', sheet_name='Fechas imputadas'
             )
 
         incoherence_mask = self.df['Fecha Atencion Urgencia'].notnull() & (
@@ -409,11 +390,10 @@ class DateCleaner:
             self.df.loc[incoherence_mask, 'Fecha del evento'] = (
                 self.df.loc[incoherence_mask, 'Fecha Atencion Urgencia'])
             self.df.loc[incoherence_mask, self.variables_log].to_excel(
-                'data/logs/incoherence_date_2.xlsx', sheet_name='Fechas imputadas'
+                'data/logs/fechas_incoherentes_fecha_atencion_menor_a_la_fecha_evento.xlsx', sheet_name='Fechas imputadas'
             )
 
-    @st.cache_data
-    def get_clean_date(_self) -> pd.DataFrame:
+    def get_clean_date(self) -> pd.DataFrame:
         """
         This method processes the DataFrame by applying sequential cleaning operations:
         1. Reviews format issues in dates
@@ -427,11 +407,14 @@ class DateCleaner:
         """
 
         # Aplicar metodos de limpieza de la clase
-        _self.review_format()
-        _self.review_nat()
-        _self.review_coherence()
+        self.review_format()
+        self.review_nat()
+        self.review_coherence()
 
-        return _self.df
+        # Log del DataFrame limpio
+        self.df.to_excel('data/data_cleaned/2_casos_revisados_por_fecha.xlsx', index=False)
+
+        return self.df
 
 
 class IntegerCleaner:
@@ -488,14 +471,14 @@ class IntegerCleaner:
             median_semana = self.df['Semana Epidemiologica'].median()
             self.df['Semana Epidemiologica'].fillna(median_semana, inplace=True)
             self.df.loc[mask_null, 'Semana Epidemiologica'].to_excel(
-                'data/logs/semana_epidemiologica_mediana.xlsx',
+                'data/logs/semana_epidemiologica_imputada_con_la_mediana.xlsx',
                 sheet_name='Semana Epidemiologica Imputada'
             )
         elif prop_na_sem_epidem >= 0.1:
             # Eliminar filas con NaT
             self.df = self.df[self.df['Semana Epidemiologica'].notnull()]
             self.df.loc[mask_null, 'Semana Epidemiologica'].to_excel(
-                'data/logs/semana_epidemiologica_eliminadas.xlsx',
+                'data/logs/semana_epidemiologica_con_NaN_eliminadas.xlsx',
                 sheet_name='Semana Epidemiologica Eliminada'
             )
 
@@ -576,7 +559,7 @@ class IntegerCleaner:
             median_edad = self.df['Edad Calculada'].median()
             self.df['Edad Calculada'].fillna(median_edad, inplace=True)
             self.df.loc[mask_edad_null, 'Edad Calculada'].to_excel(
-                'data/logs/edad_paciente_media.xlsx',
+                'data/logs/edad_paciente_imputadas_con_la_media.xlsx',
                 sheet_name='Edad Paciente Imputada'
             )
         elif prop_na_edad >= 0.1:
@@ -586,8 +569,18 @@ class IntegerCleaner:
                 sheet_name='Edad Paciente Eliminada'
             )
 
-    @st.cache_data
-    def get_clean_integer(_self) -> pd.DataFrame:
+        # Eliminar registros con "Edad Calculada" igual a 0 y generar log de los eliminados
+        mask_age_zero = self.df['Edad Calculada'] == 0
+        if mask_age_zero.any():
+            registros_0 = self.df.loc[mask_age_zero]
+            registros_0.to_excel(
+                'data/logs/edad_paciente_0_registros.xlsx',
+                index=False,
+                sheet_name='Edad 0 Eliminada'
+            )
+            self.df = self.df.loc[~mask_age_zero]
+
+    def get_clean_integer(self) -> pd.DataFrame:
         """
         Returns the cleaned DataFrame after applying all cleaning methods.
 
@@ -602,10 +595,13 @@ class IntegerCleaner:
             The cleaned DataFrame with all cleaning transformations applied
         """
         # Aplicar metodos de limpieza de la clase
-        _self.semana_epidemiologica()
-        _self.edad_paciente()
+        self.semana_epidemiologica()
+        self.edad_paciente()
 
-        return _self.df
+        # log del DataFrame con limpieza de enteros
+        self.df.to_excel('data/data_cleaned/3_casos_revisados_por_enteros.xlsx', index=False)
+
+        return self.df
 
 
 class DuplicateCleaner():
@@ -736,11 +732,12 @@ class DuplicateCleaner():
 
         if mask_others_ids.any():
             self.df.loc[mask_others_ids, 'id_rut_id_base'] = self.df.loc[mask_others_ids, 'ID/RUT Paciente'].str.replace(
-                '[^0-9]', '', regex=True).str.strip()  # Elimina espacios en blanco antes y después
+                '[^0-9]', '', regex=True
+            ).str.strip()  # Elimina espacios en blanco antes y después
 
             # Convertir a entero, manejando valores vacíos
             self.df.loc[mask_others_ids, 'id_rut_id_base'] = self.df.loc[mask_others_ids, 'id_rut_id_base'].apply(
-                lambda x: int(x) if (isinstance(x, str) and x.isdigit()) or (isinstance(x, float) and not pd.isna(x)) else None
+                lambda x: int(x) if isinstance(x, str) and x.isdigit() else None
             )
 
     def find_duplicates(self, similarity_threshold=90) -> pd.DataFrame:
@@ -850,10 +847,10 @@ class DuplicateCleaner():
                 - Nombre Paciente 
                 - Apellido Paterno Paciente
                 - Apellido Materno Paciente
-                - Fecha de nacimiento del paciente
+                - Fecha Nacimiento Paciente
                 - Fecha del evento
                 - Comuna
-                - Establecimiento de Salud
+                - Establecimiento Salud
         """
 
         indices_to_drop = []
@@ -883,8 +880,7 @@ class DuplicateCleaner():
 
         return self.df
     
-    @st.cache_data
-    def get_clean_duplicates(_self) -> pd.DataFrame:
+    def get_clean_duplicates(self) -> pd.DataFrame:
         """
         This method applies cleaning methods of the class to handle duplicates:
         1. Finds duplicate records using find_duplicates()
@@ -897,10 +893,13 @@ class DuplicateCleaner():
         """
         
         # Aplicar metodos de limpieza de la clase
-        _self.find_duplicates()
-        _self.keep_best_record()
+        self.find_duplicates()
+        self.keep_best_record()
 
-        return _self.df
+        # log del DataFrame con limpieza de duplicados
+        self.df.to_excel('data/data_cleaned/4_casos_revisados_por_duplicados.xlsx', index=False)
+
+        return self.df
 
 
 class CategoricalCleaner():
@@ -934,8 +933,7 @@ class ApplyCleaners():
     def __init__(self, df: pd.DataFrame) -> None:
         self.df = df
 
-    @st.cache_data
-    def apply_cleaners(_self) -> pd.DataFrame:
+    def apply_cleaners(self, df: pd.DataFrame) -> pd.DataFrame:
         """
         Apply all data cleaners to a DataFrame sequentially.
 
@@ -945,25 +943,28 @@ class ApplyCleaners():
         3. Cleaning integer columns
         4. Removing duplicates
 
+        Args:
+            df (pd.DataFrame): The DataFrame to be cleaned.
+
         Returns:
             pd.DataFrame: The cleaned DataFrame after applying all cleaning operations.
         """
 
-        _self.filter_data = FilterData(_self.df)
-        _self.filter_data.filter_columns(_self.filter_data.selected_variables)
-        _self.filter_data.get_filter_data()
+        self.filter_data = FilterData(df)
+        self.filter_data.filter_columns(self.filter_data.selected_variables)
+        self.filter_data.get_filter_data()
 
-        _self.date_cleaner = DateCleaner(_self.filter_data.df)
-        _self.date_cleaner.get_clean_date()
+        self.date_cleaner = DateCleaner(self.filter_data.df)
+        self.date_cleaner.get_clean_date()
 
-        _self.integer_cleaner = IntegerCleaner(_self.date_cleaner.df)
-        _self.integer_cleaner.get_clean_integer()
+        self.integer_cleaner = IntegerCleaner(self.date_cleaner.df)
+        self.integer_cleaner.get_clean_integer()
 
-        _self.duplicate_cleaner = DuplicateCleaner(_self.integer_cleaner.df)
-        _self.duplicate_cleaner.get_clean_duplicates()
+        self.duplicate_cleaner = DuplicateCleaner(self.integer_cleaner.df)
+        self.duplicate_cleaner.get_clean_duplicates()
 
-        # _self.categorical_cleaner = CategoricalCleaner(_self.duplicate_cleaner.df)
-        # _self.categorical_cleaner.get_clean_categorical()
+        # self.categorical_cleaner = CategoricalCleaner(self.duplicate_cleaner.df)
+        # self.categorical_cleaner.get_clean_categorical()
 
-        return _self.df
+        return self.duplicate_cleaner.df
     
