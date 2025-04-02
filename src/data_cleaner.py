@@ -149,9 +149,14 @@ class FilterData:
             & (self.df['Lesion fue Autoinfligida'] == 'Si')
             & (self.df['Lesion fue Intencional'] == 'Si')
             & (self.df['Tuvo intencion de Morir'].isin(['Si', 'No']))
-        ]
+        ].copy()
         self.df.to_excel('data/data_cleaned/1_casos_filtrados.xlsx', index=False)
     
+        # Convertir columnas de tipo object a string, para evitar que queden valores no convertibles
+        for col in self.df.select_dtypes(include=['object']).columns:
+            self.df[col] = self.df[col].apply(lambda x: str(x) if pd.notnull(x) else x)
+
+        self.df.to_excel('data/data_cleaned/1_casos_filtrados.xlsx', index=False)
         return self.df
  
 
@@ -215,21 +220,21 @@ class DateCleaner:
         possible_formats = ["%d/%m/%Y", "%d-%m-%Y", "%Y-%m-%d"]  # Define los formatos esperados
 
         # Conviertes la columna intentando cada formato
-        self.df['Fecha Atencion Urgencia'] = self.df['Fecha Atencion Urgencia'].apply(
+        self.df.loc[:, 'Fecha Atencion Urgencia'] = self.df.loc[:,'Fecha Atencion Urgencia'].apply(
             lambda x: parse_with_multiple_formats(x, possible_formats) if pd.notnull(x) else pd.NaT
         )
         self.df.loc[self.df['Fecha Atencion Urgencia'].isnull(), self.variables_log].to_excel(
             "data/logs/fechas_con_formatos_imposibles_en_atencion_urgencia.xlsx"
         )
 
-        self.df['Fecha del evento'] = self.df['Fecha del evento'].apply(
+        self.df.loc[:, 'Fecha del evento'] = self.df.loc[:, 'Fecha del evento'].apply(
             lambda x: parse_with_multiple_formats(x, possible_formats) if pd.notnull(x) else pd.NaT
         )
         self.df.loc[self.df['Fecha del evento'].isnull(), self.variables_log].to_excel(
             "data/logs/fechas_con_formatos_imposibles_en_fecha_de_evento.xlsx"
         )
 
-        self.df['Fecha Nacimiento Paciente'] = self.df['Fecha Nacimiento Paciente'].apply(
+        self.df.loc[:, 'Fecha Nacimiento Paciente'] = self.df.loc[:, 'Fecha Nacimiento Paciente'].apply(
             lambda x: parse_with_multiple_formats(x, possible_formats) if pd.notnull(x) else pd.NaT
         )
         self.df.loc[self.df['Fecha Nacimiento Paciente'].isnull(), self.variables_log].to_excel(
@@ -281,7 +286,7 @@ class DateCleaner:
         if prop_na_atencion >= 0.1:
             # Calcula la mediana de las fechas no nulas
             median_atencion = self.df['Fecha Atencion Urgencia'].median()
-            self.df['Fecha Atencion Urgencia'].fillna(median_atencion, inplace=True)
+            self.df['Fecha Atencion Urgencia'] = self.df['Fecha Atencion Urgencia'].fillna(median_atencion)
             self.df.loc[mask_atencion_nat, self.variables_log].to_excel(
                 'data/logs/fecha_atencion_urgencias_imputada_con_la_mediana.xlsx',
                 sheet_name='Fecha Atencion Urgencia Imputada'
@@ -306,7 +311,7 @@ class DateCleaner:
         mask_evento_nat = self.df['Fecha del evento'].isnull()
         if mask_evento_nat.any():
             median_evento = self.df['Fecha del evento'].median()
-            self.df['Fecha del evento'].fillna(median_evento, inplace=True)
+            self.df['Fecha del evento'] = self.df['Fecha del evento'].fillna(median_evento)
             self.df.loc[mask_evento_nat, self.variables_log].to_excel(
                 'data/logs/fecha_evento_imputada_con_la_mediana.xlsx',
                 sheet_name='Fecha Evento Imputada'
@@ -346,7 +351,7 @@ class DateCleaner:
 
             if 0 < prop_na_nacimiento < 0.1:
                 median_nac = self.df['Fecha Nacimiento Paciente'].median()
-                self.df['Fecha Nacimiento Paciente'].fillna(median_nac, inplace=True)
+                self.df['Fecha Nacimiento Paciente'] = self.df['Fecha Nacimiento Paciente'].fillna(median_nac)
                 self.df.loc[mask_nac_nat, self.variables_log].to_excel(
                     'data/logs/fecha_nacimiento_imputada_con_la_mediana.xlsx',
                     sheet_name='Fecha Nacimiento Imputada'
@@ -469,7 +474,7 @@ class IntegerCleaner:
         if 0 < prop_na_sem_epidem < 0.1:
             # Imputar con la mediana
             median_semana = self.df['Semana Epidemiologica'].median()
-            self.df['Semana Epidemiologica'].fillna(median_semana, inplace=True)
+            self.df['Semana Epidemiologica'] = self.df['Semana Epidemiologica'].fillna(median_semana)
             self.df.loc[mask_null, 'Semana Epidemiologica'].to_excel(
                 'data/logs/semana_epidemiologica_imputada_con_la_mediana.xlsx',
                 sheet_name='Semana Epidemiologica Imputada'
@@ -506,6 +511,10 @@ class IntegerCleaner:
             - Potentially removing rows with invalid ages
             - Creating log files for imputed/removed ages
         """
+        # 0. Asegurarse de que las columnas sean de tipo datetime
+        self.df['Fecha Nacimiento Paciente'] = pd.to_datetime(self.df['Fecha Nacimiento Paciente'], errors='coerce')
+        self.df['Fecha del evento'] = pd.to_datetime(self.df['Fecha del evento'], errors='coerce')
+        self.df['Fecha Atencion Urgencia'] = pd.to_datetime(self.df['Fecha Atencion Urgencia'], errors='coerce')
 
         # 1. Verificar que ambas columnas existan en el DataFrame
         if 'Fecha Nacimiento Paciente' not in self.df.columns or 'Fecha del evento' not in self.df.columns:
@@ -518,12 +527,12 @@ class IntegerCleaner:
             self.df['Fecha del evento'].notnull()
         )
 
+        diferencia = self.df.loc[mask_fechas_validas, 'Fecha del evento'] - self.df.loc[mask_fechas_validas, 'Fecha Nacimiento Paciente']
+        print("Tipo de diferenica:", diferencia.dtype)  # Verifica que sea timedelta64[ns]
+
         # 3. Calcular la diferencia en días (vectorizado) solo para las filas con fechas válidas
         #    Esto devuelve un objeto Timedelta.
-        diferencia_dias = (
-            self.df.loc[mask_fechas_validas, 'Fecha del evento'] -
-            self.df.loc[mask_fechas_validas, 'Fecha Nacimiento Paciente']
-        ).dt.days
+        diferencia_dias = diferencia.dt.days
         
         # 4. Convertir la diferencia de días a años (aprox), ignorando los valores negativos o inválidos
         #    Si quieres descartar los casos negativos, puedes marcar la edad como NaN o 0.
@@ -557,7 +566,7 @@ class IntegerCleaner:
 
         if 0 < prop_na_edad < 0.1:
             median_edad = self.df['Edad Calculada'].median()
-            self.df['Edad Calculada'].fillna(median_edad, inplace=True)
+            self.df['Edad Calculada'] = self.df['Edad Calculada'].fillna(median_edad)
             self.df.loc[mask_edad_null, 'Edad Calculada'].to_excel(
                 'data/logs/edad_paciente_imputadas_con_la_media.xlsx',
                 sheet_name='Edad Paciente Imputada'
@@ -825,7 +834,7 @@ class DuplicateCleaner():
         self.df.loc[duplicates, 'compare_key'].to_excel('data/logs/duplicados.xlsx', index=False) # mi forma
         
         # GPT style
-        with open('log_duplicados.txt', 'w', encoding='utf-8') as log:
+        with open('data/logs/log_duplicados.txt', 'w', encoding='utf-8') as log:
             for i, grupo in enumerate(self.log_duplicados, start=1):
                 log.write(f"\n{'-'*20} Grupo duplicado {i} {'-'*20}\n")
                 log.write(grupo.to_string(index=True))
@@ -869,7 +878,7 @@ class DuplicateCleaner():
             ]])
 
         # Generar log de registros descartados
-        with open('log_registros_descartados.txt', 'w', encoding='utf-8') as log:
+        with open('data/logs/log_registros_descartados.txt', 'w', encoding='utf-8') as log:
             for i, grupo in enumerate(log_descartados, start=1):
                 log.write(f"\n{'-'*20} Registros descartados del grupo {i} {'-'*20}\n")
                 log.write(grupo.to_string(index=True))
