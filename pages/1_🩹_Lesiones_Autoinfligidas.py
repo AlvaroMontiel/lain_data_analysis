@@ -9,7 +9,7 @@ st.set_page_config(
     page_icon="🩹"
 )
 
-st.sidebar.image("/home/alvaro/PycharmProjects/lain_data_analysis/assets/logo.png", width=200)
+st.sidebar.image("assets/logo.png", width=200)
 
 st.markdown("# Vigilancia epidemiológica de lesiones autoinfligidas")
 st.sidebar.header("Lesiones Autoinfligidas")
