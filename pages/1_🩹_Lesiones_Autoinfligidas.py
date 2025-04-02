@@ -1,12 +1,7 @@
-import streamlit as st # type: ignore
+import streamlit as st
 import pandas as pd
+import plotly.express as px
 from src.data_loader import DataLoader
-from src.data_cleaner import FilterData
-from src.data_cleaner import IntegerCleaner
-from src.data_cleaner import DateCleaner
-from src.data_cleaner import DuplicateCleaner
-# from src.data_cleaner import ApplyCleaners
-import plotly.express as px # type: ignore
 
 # Formato de la página
 st.set_page_config(
@@ -43,46 +38,11 @@ st.markdown(
 # Data Loading
 # Cargar datos desde un archivo Excel
 # -------------------------------------------------------------
-ruta_excel = "data/reporte_formularios_250212_1610.xlsx"
-hoja_excel = "reporte_formularios_250212_1610"
+ruta_excel = "data/set_datos_lain_para_analisis.xlsx"
+hoja_excel = "Sheet1" 
 
 loader = DataLoader(file_path=ruta_excel, sheet_name=hoja_excel)
-df_raw = loader.load_data()
-
-# -------------------------------------------------------------
-# ApplyCleaners on raw dataframe
-# Aplicar limpieza de datos al DataFrame crudo
-# ------------------------------------------------------------- 
-st.markdown("### Limpieza de datos en proceso")
-progress_text = st.empty()
-progress_bar = st.progress(0)
-
-with st.spinner("Iniciando limpieza de datos..."):
-    # Etapa 1: Filtrar datos
-    progress_text.text("Filtrando datos...")
-    clean_data = FilterData(df_raw)
-    df_clean = clean_data.get_filter_data()    
-    progress_bar.progress(25)
-    
-    # Etapa 2: Limpiar columnas de fecha
-    progress_text.text("Limpiando columnas de fecha...")
-    clean_data = DateCleaner(df_clean)
-    df_clean = clean_data.get_clean_date()
-    progress_bar.progress(50)
-    
-    # Etapa 3: Limpiar columnas numéricas y de identificación
-    progress_text.text("Limpiando columnas numéricas y de identificación...")
-    clean_data = IntegerCleaner(df_clean)
-    df_clean = clean_data.get_clean_integer()
-    progress_bar.progress(100)
-    
-    # Etapa 4: Eliminar duplicados y ajustes finales
-    progress_text.text("Eliminando duplicados y finalizando ajustes...")
-    clean_data = DuplicateCleaner(df_clean)
-    df_clean = clean_data.get_clean_duplicates()
-    progress_bar.progress(100)
-    
-    progress_text.text("Limpieza completada!")
+df_clean = loader.load_data()
 
 # -------------------------------------------------------------
 # Data Analysis and Visualization
