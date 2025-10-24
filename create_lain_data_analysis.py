@@ -9,8 +9,8 @@ from src.data_cleaner import DuplicateCleaner
 # Data Loading
 # Cargar datos desde un archivo Excel
 # -------------------------------------------------------------
-ruta_excel = "data/reporte_formularios_250402_1039.xlsx"
-hoja_excel = "reporte_formularios_250402_1039"
+ruta_excel = "data/reporte_formularios_251024_1216.xlsx"
+hoja_excel = "reporte_formularios_251024_1216"
 
 loader = DataLoader(file_path=ruta_excel, sheet_name=hoja_excel)
 df_raw = loader.load_data()
